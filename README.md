@@ -40,3 +40,4 @@ Pagume Trip addresses these problems by providing:
 |---|---|---|
 | 1 | Aelaf Eskindir Abebe | CTC-3300-26 |
 | 2 | Michael Johnson | CTC-3301-26 |
+| 3 | Abel Endale | CTC-1667-26 |
