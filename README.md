@@ -41,6 +41,7 @@ Pagume Trip addresses these problems by providing:
 | 1   | Aelaf Eskindir Abebe | CTC-3300-26  |
 | 2   | Abel Endale          | CTC-1667-26  |
 | 3   | Abigiya Arega        | CTC-10112-26 |
-| 4   | Acrosia Tamrat       | CTC-1795-26   |
+| 4   | Acrosia Tamrat       | CTC-1795-26  |
+| 5   | Aaron Teshale        | CTC-181-26   |
 
 
