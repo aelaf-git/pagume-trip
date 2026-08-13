@@ -1,0 +1,28 @@
+[
+  {
+    "id": "dest_gorgora",
+    "name": "Gorgora",
+    "description": "Historic town on the northern shore of Lake Tana, known for monasteries, birdlife, and boat trips.",
+    "region": "Amhara",
+    "zone": "North Gondar",
+    "woreda": "Dembia",
+    "latitude": 12.2333,
+    "longitude": 37.3,
+    "category": "lakeside",
+    "recommended_duration_days": 4,
+    "verification_status": "VERIFIED"
+  },
+  {
+    "id": "dest_lalibela",
+    "name": "Lalibela",
+    "description": "Rock-hewn churches and a major Ethiopian Orthodox pilgrimage destination.",
+    "region": "Amhara",
+    "zone": "North Wollo",
+    "woreda": "Lalibela",
+    "latitude": 12.031,
+    "longitude": 39.0476,
+    "category": "historical",
+    "recommended_duration_days": 4,
+    "verification_status": "VERIFIED"
+  }
+]
