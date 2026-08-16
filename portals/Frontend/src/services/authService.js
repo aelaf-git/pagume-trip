@@ -1,7 +1,43 @@
 const MOCK_USERS = {
   "provider@pagume.et": {
     password: "password123",
-    user: { id: "p-1", name: "Habesha Hotels PLC", email: "provider@pagume.et", role: "provider" },
+    user: {
+      id: "p-1",
+      name: "Habesha Hotels PLC",
+      email: "provider@pagume.et",
+      role: "provider",
+      providerType: "hotel",
+    },
+  },
+  "agency@pagume.et": {
+    password: "password123",
+    user: {
+      id: "p-2",
+      name: "GoGreen Tours",
+      email: "agency@pagume.et",
+      role: "provider",
+      providerType: "agency",
+    },
+  },
+  "transport@pagume.et": {
+    password: "password123",
+    user: {
+      id: "p-3",
+      name: "Addis Rent-a-Car",
+      email: "transport@pagume.et",
+      role: "provider",
+      providerType: "transport",
+    },
+  },
+  "driver@pagume.et": {
+    password: "password123",
+    user: {
+      id: "p-4",
+      name: "Dawit Mengistu",
+      email: "driver@pagume.et",
+      role: "provider",
+      providerType: "driver",
+    },
   },
   "admin@pagume.et": {
     password: "password123",
