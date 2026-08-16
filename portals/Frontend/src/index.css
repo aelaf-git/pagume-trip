@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eefbf3;
+  --color-brand-100: #d6f5e1;
+  --color-brand-500: #0f9d58;
+  --color-brand-600: #0c7f47;
+  --color-brand-700: #0a6339;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-gray-50);
+  color: var(--color-gray-900);
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+}
