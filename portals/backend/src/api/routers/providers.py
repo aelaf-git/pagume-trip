@@ -5,26 +5,31 @@ from sqlalchemy.future import select
 
 from src.api.deps import get_db, get_current_active_user
 from src.db.models.user import User, UserRole
-from src.db.models.provider import Hotel
-from src.schemas.inventory import HotelCreate, HotelResponse
+from src.db.models.provider import Hotel, Room, TourPackage, Vehicle
+from src.schemas.inventory import (
+    HotelCreate, HotelResponse,
+    RoomCreate, RoomResponse,
+    TourPackageCreate, TourPackageResponse,
+    VehicleCreate, VehicleResponse
+)
 
 router = APIRouter()
 
-def require_hotel_provider(current_user: User = Depends(get_current_active_user)):
-    if current_user.role not in [UserRole.HOTEL_PROVIDER, UserRole.ADMIN]:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-    return current_user
+def require_role(roles: List[UserRole]):
+    def role_checker(current_user: User = Depends(get_current_active_user)):
+        if current_user.role not in roles and current_user.role != UserRole.ADMIN:
+            raise HTTPException(status_code=403, detail="Not enough permissions")
+        return current_user
+    return role_checker
 
+# HOTELS
 @router.post("/hotels", response_model=HotelResponse)
 async def create_hotel(
     hotel_in: HotelCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hotel_provider)
+    current_user: User = Depends(require_role([UserRole.HOTEL_PROVIDER]))
 ):
-    hotel = Hotel(
-        **hotel_in.model_dump(),
-        provider_id=current_user.id
-    )
+    hotel = Hotel(**hotel_in.model_dump(), provider_id=current_user.id)
     db.add(hotel)
     await db.commit()
     await db.refresh(hotel)
@@ -32,12 +37,87 @@ async def create_hotel(
 
 @router.get("/hotels", response_model=List[HotelResponse])
 async def read_my_hotels(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = 0, limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hotel_provider)
+    current_user: User = Depends(require_role([UserRole.HOTEL_PROVIDER]))
 ):
     stmt = select(Hotel).where(Hotel.provider_id == current_user.id).offset(skip).limit(limit)
     result = await db.execute(stmt)
-    hotels = result.scalars().all()
-    return hotels
+    return result.scalars().all()
+
+# ROOMS
+@router.post("/hotels/{hotel_id}/rooms", response_model=RoomResponse)
+async def create_room(
+    hotel_id: int,
+    room_in: RoomCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.HOTEL_PROVIDER]))
+):
+    # Verify hotel belongs to user
+    stmt = select(Hotel).where(Hotel.id == hotel_id, Hotel.provider_id == current_user.id)
+    result = await db.execute(stmt)
+    hotel = result.scalars().first()
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found or not owned by user")
+    
+    room = Room(**room_in.model_dump(), hotel_id=hotel_id)
+    db.add(room)
+    await db.commit()
+    await db.refresh(room)
+    return room
+
+@router.get("/hotels/{hotel_id}/rooms", response_model=List[RoomResponse])
+async def read_hotel_rooms(
+    hotel_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.HOTEL_PROVIDER]))
+):
+    stmt = select(Room).where(Room.hotel_id == hotel_id)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+# TOUR PACKAGES
+@router.post("/tours", response_model=TourPackageResponse)
+async def create_tour_package(
+    tour_in: TourPackageCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.TOUR_AGENCY]))
+):
+    tour = TourPackage(**tour_in.model_dump(), agency_id=current_user.id)
+    db.add(tour)
+    await db.commit()
+    await db.refresh(tour)
+    return tour
+
+@router.get("/tours", response_model=List[TourPackageResponse])
+async def read_my_tours(
+    skip: int = 0, limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.TOUR_AGENCY]))
+):
+    stmt = select(TourPackage).where(TourPackage.agency_id == current_user.id).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+# VEHICLES
+@router.post("/vehicles", response_model=VehicleResponse)
+async def create_vehicle(
+    vehicle_in: VehicleCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.CAR_RENTAL]))
+):
+    vehicle = Vehicle(**vehicle_in.model_dump(), rental_company_id=current_user.id)
+    db.add(vehicle)
+    await db.commit()
+    await db.refresh(vehicle)
+    return vehicle
+
+@router.get("/vehicles", response_model=List[VehicleResponse])
+async def read_my_vehicles(
+    skip: int = 0, limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.CAR_RENTAL]))
+):
+    stmt = select(Vehicle).where(Vehicle.rental_company_id == current_user.id).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return result.scalars().all()
