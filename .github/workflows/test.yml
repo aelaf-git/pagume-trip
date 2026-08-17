@@ -2,11 +2,11 @@ name: Backend API Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, uat, ui, portals-dev ]
     paths:
       - 'portals/backend/**'
   pull_request:
-    branches: [ main ]
+    branches: [ main, uat, ui, portals-dev ]
     paths:
       - 'portals/backend/**'
 
