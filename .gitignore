@@ -5,3 +5,10 @@ mobile.md
 UI.md
 web.md
 claude.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.env
