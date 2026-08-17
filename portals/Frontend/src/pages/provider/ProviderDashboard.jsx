@@ -2,6 +2,7 @@ import { CalendarCheck, Wallet, Star, Package } from "lucide-react";
 import Card from "../../components/common/Card";
 import PageHeader from "../../components/common/PageHeader";
 import OnboardingStatusCard from "../../components/provider/OnboardingStatusCard";
+import ProviderAnalytics from "../../components/analytics/ProviderAnalytics";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOnboardingStatus } from "../../hooks/useOnboardingStatus";
 
@@ -43,6 +44,8 @@ export default function ProviderDashboard() {
           </Card>
         ))}
       </div>
+
+      <ProviderAnalytics />
     </div>
   );
 }
