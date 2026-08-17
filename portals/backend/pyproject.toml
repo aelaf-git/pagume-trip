@@ -10,6 +10,7 @@ dependencies = [
     "fastapi[standard]>=0.112.0",
     "geoalchemy2>=0.15.2",
     "passlib[bcrypt]>=1.7.4",
+    "bcrypt==4.0.1",
     "pgvector>=0.3.2",
     "psycopg2-binary>=2.9.9",
     "pydantic-settings>=2.4.0",
