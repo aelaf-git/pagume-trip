@@ -9,6 +9,11 @@ from pagume_agents.models.inventory import Destination, Hotel, HotelRoom, TourPa
 from pagume_agents.models.trip import ItineraryItem, Trip
 
 
+def _query_params(params: dict) -> dict:
+    """Omit None/empty values so FastAPI does not 422 on ``?check_in=``."""
+    return {key: value for key, value in params.items() if value is not None and value != ""}
+
+
 class HttpInventoryClient:
     """Calls Pagume REST endpoints. Teammates implement the matching API."""
 
@@ -32,7 +37,8 @@ class HttpInventoryClient:
     ) -> list[Destination]:
         with self._client() as client:
             response = client.get(
-                "/v1/destinations", params={"q": query, "region": region}
+                "/v1/destinations",
+                params=_query_params({"q": query, "region": region}),
             )
             response.raise_for_status()
             return [Destination.model_validate(row) for row in response.json()["results"]]
@@ -67,13 +73,15 @@ class HttpInventoryClient:
         with self._client() as client:
             response = client.get(
                 "/v1/hotels",
-                params={
-                    "destination_id": destination_id,
-                    "guests": guests,
-                    "max_price_etb": max_price_etb,
-                    "check_in": check_in,
-                    "check_out": check_out,
-                },
+                params=_query_params(
+                    {
+                        "destination_id": destination_id,
+                        "guests": guests,
+                        "max_price_etb": max_price_etb,
+                        "check_in": check_in,
+                        "check_out": check_out,
+                    }
+                ),
             )
             response.raise_for_status()
             return [Hotel.model_validate(row) for row in response.json()["results"]]
@@ -95,7 +103,7 @@ class HttpInventoryClient:
         with self._client() as client:
             response = client.get(
                 f"/v1/hotels/{hotel_id}/rooms",
-                params={"guests": guests, "max_price_etb": max_price_etb},
+                params=_query_params({"guests": guests, "max_price_etb": max_price_etb}),
             )
             response.raise_for_status()
             return [HotelRoom.model_validate(row) for row in response.json()["results"]]
@@ -120,11 +128,13 @@ class HttpInventoryClient:
         with self._client() as client:
             response = client.get(
                 "/v1/transport",
-                params={
-                    "destination_id": destination_id,
-                    "seats": seats,
-                    "service_type": service_type,
-                },
+                params=_query_params(
+                    {
+                        "destination_id": destination_id,
+                        "seats": seats,
+                        "service_type": service_type,
+                    }
+                ),
             )
             response.raise_for_status()
             return [Vehicle.model_validate(row) for row in response.json()["results"]]
@@ -138,11 +148,13 @@ class HttpInventoryClient:
         with self._client() as client:
             response = client.get(
                 "/v1/car-rentals",
-                params={
-                    "destination_id": destination_id,
-                    "seats": seats,
-                    "is_4wd": is_4wd,
-                },
+                params=_query_params(
+                    {
+                        "destination_id": destination_id,
+                        "seats": seats,
+                        "is_4wd": is_4wd,
+                    }
+                ),
             )
             response.raise_for_status()
             return [Vehicle.model_validate(row) for row in response.json()["results"]]
@@ -167,11 +179,13 @@ class HttpInventoryClient:
         with self._client() as client:
             response = client.get(
                 "/v1/tours",
-                params={
-                    "destination_id": destination_id,
-                    "q": query,
-                    "guests": guests,
-                },
+                params=_query_params(
+                    {
+                        "destination_id": destination_id,
+                        "q": query,
+                        "guests": guests,
+                    }
+                ),
             )
             response.raise_for_status()
             return [TourPackage.model_validate(row) for row in response.json()["results"]]

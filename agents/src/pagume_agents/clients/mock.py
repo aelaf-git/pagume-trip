@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from uuid import uuid4
 
-from pagume_agents.clients.geo import haversine_km
+from pagume_agents.clients.geo import destination_search_rank, haversine_km
 from pagume_agents.models.booking import Booking, BookingItem, BookingStatus
 from pagume_agents.models.inventory import Destination, Hotel, HotelRoom, TourPackage, Vehicle
 from pagume_agents.models.trip import ItineraryItem, Trip
@@ -71,19 +71,21 @@ class MockInventoryClient:
         region: str | None = None,
     ) -> list[Destination]:
         q = (query or "").strip().lower()
-        results: list[Destination] = []
+        scored: list[tuple[int, Destination]] = []
         for dest in self.destinations:
             if dest.verification_status != "VERIFIED":
                 continue
             haystack = " ".join(
                 [dest.name, dest.description, dest.region, dest.zone, dest.woreda or ""]
-            ).lower()
-            if q and q not in haystack:
+            )
+            rank = destination_search_rank(dest.name, haystack, q)
+            if rank is None:
                 continue
             if region and region.lower() not in dest.region.lower():
                 continue
-            results.append(dest)
-        return results
+            scored.append((rank, dest))
+        scored.sort(key=lambda item: (item[0], item[1].name))
+        return [dest for _, dest in scored]
 
     def get_destination(self, destination_id: str) -> Destination | None:
         return next((d for d in self.destinations if d.id == destination_id), None)

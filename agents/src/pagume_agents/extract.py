@@ -17,18 +17,22 @@ WORD_NUMBERS = {
     "twelve": 12,
 }
 
+# Longer phrases first so "bahir dar" wins over a shorter substring.
 KNOWN_DESTINATIONS = (
-    "gorgora",
-    "lalibela",
-    "gondar",
-    "gonder",
-    "axum",
-    "aksum",
-    "bahir dar",
-    "harar",
-    "simien",
-    "omo",
-    "danakil",
+    ("addis ababa", "Addis Ababa"),
+    ("bahir dar", "Bahir Dar"),
+    ("simien mountains", "Simien Mountains"),
+    ("omo valley", "Omo Valley"),
+    ("gorgora", "Gorgora"),
+    ("lalibela", "Lalibela"),
+    ("gonder", "Gondar"),
+    ("gondar", "Gondar"),
+    ("aksum", "Axum"),
+    ("axum", "Axum"),
+    ("harar", "Harar"),
+    ("simien", "Simien Mountains"),
+    ("omo", "Omo Valley"),
+    ("danakil", "Danakil"),
 )
 
 
@@ -43,9 +47,9 @@ def extract_trip_context(text: str, existing: TripContext | None = None) -> Trip
     ctx = existing.model_copy() if existing else TripContext()
     lowered = text.lower()
 
-    for name in KNOWN_DESTINATIONS:
-        if name in lowered:
-            ctx.destination_query = name.title() if name != "bahir dar" else "Bahir Dar"
+    for alias, canonical in KNOWN_DESTINATIONS:
+        if alias in lowered:
+            ctx.destination_query = canonical
             break
 
     budget_match = re.search(

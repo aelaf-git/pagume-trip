@@ -1,4 +1,18 @@
+from datetime import date, timedelta
 from math import atan2, cos, radians, sin, sqrt
+
+
+def date_range(check_in: str, check_out: str) -> list[str]:
+    start = date.fromisoformat(check_in)
+    end = date.fromisoformat(check_out)
+    if end <= start:
+        return [check_in]
+    days: list[str] = []
+    current = start
+    while current < end:
+        days.append(current.isoformat())
+        current += timedelta(days=1)
+    return days
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

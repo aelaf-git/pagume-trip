@@ -61,6 +61,6 @@ uvicorn pagume_agents.api.app:app --reload --app-dir src --port 8100
 pytest
 ```
 
-## Swapping inventory
+## Inventory source
 
-`MockInventoryClient` seeds Gorgora and Lalibela from `data/mock/`. Point `INVENTORY_CLIENT=http` and `PAGUME_API_BASE_URL` at the Pagume API when it exists. `HttpInventoryClient` implements the same protocol.
+By default agents call the Pagume API (`INVENTORY_CLIENT=http`, `PAGUME_API_BASE_URL=http://127.0.0.1:8000`). Start `../api` first. Set `INVENTORY_CLIENT=mock` to use local JSON instead.
