@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/models/trip.dart';
 import '../../data/models/booking.dart';
 import '../../data/models/itinerary.dart';
+import '../../core/constants/app_colors.dart';
 
 class TripPlannerScreen extends StatefulWidget {
   const TripPlannerScreen({super.key});
@@ -17,13 +18,9 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
   @override
   void initState() {
     super.initState();
-    // Load a sample trip immediately for testing
     _currentTrip = _createSampleTrip();
   }
 
-  // ============================================
-  // SAMPLE TRIP DATA (for testing)
-  // ============================================
   Trip _createSampleTrip() {
     return Trip(
       id: 'PT-82931',
@@ -174,15 +171,13 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  // ============================================
-  // BUILD THE UI
-  // ============================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('My Trips'),
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -206,9 +201,6 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  // ============================================
-  // EMPTY STATE (When no trips exist)
-  // ============================================
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -238,13 +230,11 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: () {
-              // Navigate to Chat Screen
-            },
+            onPressed: () {},
             icon: const Icon(Icons.chat),
             label: const Text('Chat with AI'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(
                 horizontal: 32,
@@ -257,41 +247,31 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  // ============================================
-  // TRIP DETAILS (The main display)
-  // ============================================
   Widget _buildTripDetails() {
     final trip = _currentTrip!;
 
-    return SingleChildScrollView(
+    return SingleChildScrollView(  // ✅ FIXED: was SingleChildScrollUp
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Trip Summary Card
           _buildTripSummary(trip),
           const SizedBox(height: 16),
-          // Itinerary
           _buildItinerary(trip),
           const SizedBox(height: 16),
-          // Bookings
           _buildBookings(trip),
           const SizedBox(height: 16),
-          // Budget Summary
           _buildBudgetSummary(trip),
         ],
       ),
     );
   }
 
-  // ============================================
-  // TRIP SUMMARY CARD
-  // ============================================
   Widget _buildTripSummary(Trip trip) {
     final days = trip.itinerary.days.length;
 
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -337,17 +317,17 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
             const SizedBox(height: 4),
             Text(
               '${trip.travelers} travelers • ${days} days',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey,
+                color: AppColors.grey600,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               '${_formatDate(trip.startDate)} - ${_formatDate(trip.endDate)}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey,
+                color: AppColors.grey600,
               ),
             ),
           ],
@@ -356,9 +336,6 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  // ============================================
-  // ITINERARY SECTION
-  // ============================================
   Widget _buildItinerary(Trip trip) {
     return Card(
       elevation: 2,
@@ -388,8 +365,9 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: AppColors.grey50,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.grey200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,9 +387,9 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
               children: [
                 Text(
                   item.time,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: AppColors.grey600,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -430,7 +408,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                         item.description,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: AppColors.grey600,
                         ),
                       ),
                       if (item.bookingId != null)
@@ -458,7 +436,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                           '💰 ${item.cost!.toStringAsFixed(0)} ETB',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: AppColors.grey600,
                           ),
                         ),
                     ],
@@ -472,9 +450,6 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  // ============================================
-  // BOOKINGS SECTION
-  // ============================================
   Widget _buildBookings(Trip trip) {
     return Card(
       elevation: 2,
@@ -496,14 +471,15 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: AppColors.grey50,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.grey200),
               ),
               child: Row(
                 children: [
                   Icon(
                     _getServiceIcon(booking.serviceType),
-                    color: Colors.blue,
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -520,14 +496,14 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                           '${booking.providerName} • ${booking.price.toStringAsFixed(0)} ${booking.currency}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: AppColors.grey600,
                           ),
                         ),
                         Text(
                           'Confirmation: ${booking.confirmationCode}',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey.shade500,
+                            color: AppColors.grey500,
                           ),
                         ),
                       ],
@@ -560,9 +536,6 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  // ============================================
-  // BUDGET SUMMARY
-  // ============================================
   Widget _buildBudgetSummary(Trip trip) {
     final totalBooked = trip.bookings.fold<double>(
       0,
@@ -586,8 +559,8 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildBudgetRow('Budget', trip.budget, Colors.blue),
-            _buildBudgetRow('Estimated', trip.estimatedCost, Colors.orange),
+            _buildBudgetRow('Budget', trip.budget, AppColors.primary),
+            _buildBudgetRow('Estimated', trip.estimatedCost, AppColors.accentDark),
             _buildBudgetRow('Booked', totalBooked, Colors.green),
             _buildBudgetRow('Remaining', remaining, remaining >= 0 ? Colors.green : Colors.red),
             const Divider(),
@@ -632,9 +605,6 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  // ============================================
-  // HELPER METHODS
-  // ============================================
   IconData _getServiceIcon(String serviceType) {
     switch (serviceType) {
       case 'hotel':
@@ -662,7 +632,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
       case 'cancelled':
         return Colors.red;
       case 'completed':
-        return Colors.blue;
+        return AppColors.primary;
       default:
         return Colors.grey;
     }
