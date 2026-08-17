@@ -121,3 +121,153 @@ async def read_my_vehicles(
     stmt = select(Vehicle).where(Vehicle.rental_company_id == current_user.id).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
+
+@router.put("/hotels/{hotel_id}", response_model=HotelResponse)
+async def update_hotel(
+    hotel_id: int,
+    hotel_in: HotelCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.HOTEL_PROVIDER]))
+):
+    stmt = select(Hotel).where(Hotel.id == hotel_id, Hotel.provider_id == current_user.id)
+    result = await db.execute(stmt)
+    hotel = result.scalars().first()
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found or not owned by user")
+    
+    update_data = hotel_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(hotel, key, value)
+    
+    await db.commit()
+    await db.refresh(hotel)
+    return hotel
+
+@router.delete("/hotels/{hotel_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_hotel(
+    hotel_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.HOTEL_PROVIDER]))
+):
+    stmt = select(Hotel).where(Hotel.id == hotel_id, Hotel.provider_id == current_user.id)
+    result = await db.execute(stmt)
+    hotel = result.scalars().first()
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Hotel not found or not owned by user")
+    
+    await db.delete(hotel)
+    await db.commit()
+    return None
+
+@router.put("/hotels/{hotel_id}/rooms/{room_id}", response_model=RoomResponse)
+async def update_room(
+    hotel_id: int,
+    room_id: int,
+    room_in: RoomCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.HOTEL_PROVIDER]))
+):
+    stmt = select(Room).join(Hotel).where(Room.id == room_id, Room.hotel_id == hotel_id, Hotel.provider_id == current_user.id)
+    result = await db.execute(stmt)
+    room = result.scalars().first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found or not owned by user")
+    
+    update_data = room_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(room, key, value)
+    
+    await db.commit()
+    await db.refresh(room)
+    return room
+
+@router.delete("/hotels/{hotel_id}/rooms/{room_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_room(
+    hotel_id: int,
+    room_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.HOTEL_PROVIDER]))
+):
+    stmt = select(Room).join(Hotel).where(Room.id == room_id, Room.hotel_id == hotel_id, Hotel.provider_id == current_user.id)
+    result = await db.execute(stmt)
+    room = result.scalars().first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found or not owned by user")
+    
+    await db.delete(room)
+    await db.commit()
+    return None
+
+@router.put("/tours/{tour_id}", response_model=TourPackageResponse)
+async def update_tour_package(
+    tour_id: int,
+    tour_in: TourPackageCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.TOUR_AGENCY]))
+):
+    stmt = select(TourPackage).where(TourPackage.id == tour_id, TourPackage.agency_id == current_user.id)
+    result = await db.execute(stmt)
+    tour = result.scalars().first()
+    if not tour:
+        raise HTTPException(status_code=404, detail="Tour package not found or not owned by user")
+    
+    update_data = tour_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(tour, key, value)
+    
+    await db.commit()
+    await db.refresh(tour)
+    return tour
+
+@router.delete("/tours/{tour_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tour_package(
+    tour_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.TOUR_AGENCY]))
+):
+    stmt = select(TourPackage).where(TourPackage.id == tour_id, TourPackage.agency_id == current_user.id)
+    result = await db.execute(stmt)
+    tour = result.scalars().first()
+    if not tour:
+        raise HTTPException(status_code=404, detail="Tour package not found or not owned by user")
+    
+    await db.delete(tour)
+    await db.commit()
+    return None
+
+@router.put("/vehicles/{vehicle_id}", response_model=VehicleResponse)
+async def update_vehicle(
+    vehicle_id: int,
+    vehicle_in: VehicleCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.CAR_RENTAL]))
+):
+    stmt = select(Vehicle).where(Vehicle.id == vehicle_id, Vehicle.rental_company_id == current_user.id)
+    result = await db.execute(stmt)
+    vehicle = result.scalars().first()
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found or not owned by user")
+    
+    update_data = vehicle_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(vehicle, key, value)
+    
+    await db.commit()
+    await db.refresh(vehicle)
+    return vehicle
+
+@router.delete("/vehicles/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_vehicle(
+    vehicle_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.CAR_RENTAL]))
+):
+    stmt = select(Vehicle).where(Vehicle.id == vehicle_id, Vehicle.rental_company_id == current_user.id)
+    result = await db.execute(stmt)
+    vehicle = result.scalars().first()
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found or not owned by user")
+    
+    await db.delete(vehicle)
+    await db.commit()
+    return None
