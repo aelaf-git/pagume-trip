@@ -43,7 +43,7 @@ Pagume Trip addresses these problems by providing:
 | 3   | Abigiya Arega        | CTC-10112-26 |
 | 4   | Acrosia Tamrat       | CTC-1795-26  |
 | 5   | Aaron Teshale        | CTC-181-26   |
-| 5   | Abel Yohannis        | CTC-1410-26  |
+| 6   | Abel Yohannis        | CTC-1410-26  |
 
 
 
