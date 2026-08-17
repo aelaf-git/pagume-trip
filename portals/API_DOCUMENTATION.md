@@ -20,6 +20,17 @@ The fastest way to test and understand the API shape is via the automatically ge
 
 ---
 
+## Data Validation (Important for Frontend Forms)
+The API uses strict Pydantic validation. Your frontend forms must enforce these rules before submission to prevent `422 Unprocessable Entity` errors:
+- **Passwords**: Minimum 8 characters.
+- **Names/Titles**: Minimum 2 characters, max 100-200.
+- **Prices/Capacities**: Must be strictly greater than 0 (`price > 0`, `capacity >= 1`).
+- **Images**: Must be submitted as an array of valid URLs (e.g. `["https://s3..."]`).
+- **Coordinates**: Latitude between -90 and 90, Longitude between -180 and 180.
+- **Enums**: Vehicle transmission must be `"Manual"` or `"Automatic"`. Status must be `"ACTIVE"` or `"INACTIVE"`.
+
+---
+
 ## Authentication
 The API uses standard OAuth2 with JWT (JSON Web Tokens).
 
@@ -63,21 +74,31 @@ These endpoints are used for searching and displaying inventory to travelers (or
 ---
 
 ## Provider Endpoints (Auth Required)
-These endpoints are RBAC-protected. Only users with the matching provider role can access them.
+These endpoints are RBAC-protected. Only users with the matching provider role can access them. Providers can **only** update or delete inventory that they created.
 
 ### Hotels (Requires `HOTEL_PROVIDER` or `ADMIN`)
 - **POST** `/api/v1/providers/hotels`: Create a new hotel.
-- **GET** `/api/v1/providers/hotels`: List hotels owned by the current logged-in user.
+- **GET** `/api/v1/providers/hotels`: List hotels owned by the logged-in user.
+- **PUT** `/api/v1/providers/hotels/{hotel_id}`: Update a specific hotel.
+- **DELETE** `/api/v1/providers/hotels/{hotel_id}`: Delete a specific hotel.
+
+### Rooms (Requires `HOTEL_PROVIDER` or `ADMIN`)
 - **POST** `/api/v1/providers/hotels/{hotel_id}/rooms`: Add a room to a specific hotel.
 - **GET** `/api/v1/providers/hotels/{hotel_id}/rooms`: List rooms for a hotel.
+- **PUT** `/api/v1/providers/hotels/{hotel_id}/rooms/{room_id}`: Update a specific room.
+- **DELETE** `/api/v1/providers/hotels/{hotel_id}/rooms/{room_id}`: Delete a specific room.
 
 ### Tours (Requires `TOUR_AGENCY` or `ADMIN`)
 - **POST** `/api/v1/providers/tours`: Create a new tour package.
 - **GET** `/api/v1/providers/tours`: List tours owned by the agency.
+- **PUT** `/api/v1/providers/tours/{tour_id}`: Update a tour package.
+- **DELETE** `/api/v1/providers/tours/{tour_id}`: Delete a tour package.
 
 ### Vehicles (Requires `CAR_RENTAL` or `ADMIN`)
 - **POST** `/api/v1/providers/vehicles`: Register a new vehicle.
 - **GET** `/api/v1/providers/vehicles`: List vehicles owned by the company.
+- **PUT** `/api/v1/providers/vehicles/{vehicle_id}`: Update a vehicle.
+- **DELETE** `/api/v1/providers/vehicles/{vehicle_id}`: Delete a vehicle.
 
 ---
 
