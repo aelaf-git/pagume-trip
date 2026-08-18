@@ -27,6 +27,14 @@ def make_car_rental_node(
         started = time.perf_counter()
         ctx = TripContext.model_validate(state.get("trip_context") or {})
         dest_id = ctx.destination_id or ""
+        if not dest_id:
+            return {
+                "agent_results": {"car_rental": {"status": "error", "results": []}},
+                "errors": [
+                    {"agent": "car_rental", "message": "Missing destination_id"}
+                ],
+                "progress": [make_progress("Searching car rentals", "error")],
+            }
         vehicles = client.search_car_rentals(destination_id=dest_id, seats=ctx.guests)
         rows = [v.model_dump() for v in vehicles]
         return {

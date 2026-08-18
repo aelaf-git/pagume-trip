@@ -1,4 +1,4 @@
-from pagume_agents.models.agent import AgentResponse, AgentTask, SupervisorDecision
+from pagume_agents.models.agent import AgentResponse, AgentTask, SupervisorDecision, SupervisorParams
 from pagume_agents.models.booking import Booking, BookingItem, BookingStatus
 from pagume_agents.models.inventory import (
     Destination,
@@ -26,6 +26,7 @@ __all__ = [
     "HotelRoom",
     "ItineraryItem",
     "SupervisorDecision",
+    "SupervisorParams",
     "TourPackage",
     "Trip",
     "TripContext",

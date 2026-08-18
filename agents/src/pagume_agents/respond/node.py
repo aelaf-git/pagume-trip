@@ -18,6 +18,22 @@ def _names_from(results: dict, key: str) -> list[str]:
     return [row.get("name") for row in rows if row.get("name")]
 
 
+def _destination_catalog_message(dest_rows: list[dict[str, Any]]) -> str:
+    lines = ["Pagume currently has these verified places in Ethiopia:"]
+    for row in dest_rows:
+        name = row.get("name")
+        if not name:
+            continue
+        description = (row.get("description") or "").strip()
+        if description:
+            summary = description.split(".")[0].strip()
+            lines.append(f"- {name}: {summary}.")
+        else:
+            lines.append(f"- {name}")
+    lines.append("Tell me which place you want to visit, and I can plan hotels, transport, and tours.")
+    return "\n".join(lines)
+
+
 def respond_node(state: TripState) -> dict[str, Any]:
     ctx = TripContext.model_validate(state.get("trip_context") or {})
     results = state.get("agent_results") or {}
@@ -40,6 +56,21 @@ def respond_node(state: TripState) -> dict[str, Any]:
             "messages": [AIMessage(content=message)],
             "progress": [make_progress("Your trip could not be completed")],
             "events": [make_event(agent="respond", task="present", result_summary={"empty": True})],
+        }
+
+    if not ctx.destination_id:
+        message = _destination_catalog_message(dest_rows)
+        return {
+            "final_message": message,
+            "messages": [AIMessage(content=message)],
+            "progress": [make_progress("Here are verified places you can visit")],
+            "events": [
+                make_event(
+                    agent="respond",
+                    task="present",
+                    result_summary={"catalog": True, "count": len(dest_rows)},
+                )
+            ],
         }
 
     dest_name = ctx.destination_name or dest_rows[0].get("name")
@@ -77,7 +108,7 @@ def respond_node(state: TripState) -> dict[str, Any]:
             parts = [UNAVAILABLE]
         message = "\n".join(parts)
 
-    if errors and not option:
+    if errors and not option and ctx.destination_id:
         message += "\nSome agents reported issues; no unverified inventory was added."
 
     return {

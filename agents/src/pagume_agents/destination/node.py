@@ -28,22 +28,37 @@ def make_destination_node(
         ctx = TripContext.model_validate(state.get("trip_context") or {})
         task = state.get("current_task") or {}
         params = task.get("params") or {}
-        query = params.get("query") or ctx.destination_query or ""
+        if not isinstance(params, dict):
+            params = params.model_dump() if hasattr(params, "model_dump") else {}
+        if ctx.browse_destinations:
+            query = ""
+        else:
+            query = params.get("query") or ctx.destination_query or ""
         rows = [d.model_dump() for d in client.search_destinations(query=query)]
-        destination_id = rows[0]["id"] if rows else ctx.destination_id
-        destination_name = rows[0]["name"] if rows else ctx.destination_name
+        city_requested = bool(ctx.destination_query) and not ctx.browse_destinations
+        if rows and (city_requested or len(rows) == 1):
+            destination_id = rows[0]["id"]
+            destination_name = rows[0]["name"]
+        else:
+            destination_id = ctx.destination_id
+            destination_name = ctx.destination_name
+        found_label = "Found destination"
+        if ctx.browse_destinations and rows:
+            found_label = "Found destinations"
+        elif not rows:
+            found_label = "No destination found"
         return {
             "trip_context": {
                 **ctx.model_dump(),
                 "destination_id": destination_id,
                 "destination_name": destination_name,
-                "destination_query": query or ctx.destination_query,
+                "destination_query": ctx.destination_query if ctx.browse_destinations else (query or ctx.destination_query),
             },
             "agent_results": {
                 "destination": {"status": "success" if rows else "empty", "results": rows}
             },
             "progress": [
-                make_progress("Found destination" if rows else "No destination found")
+                make_progress(found_label)
             ],
             "events": [
                 make_event(

@@ -29,3 +29,24 @@ def test_lalibela_guest_house_in_inventory(graph):
     names = {row["name"] for row in hotels}
     assert "Lalibela Guest House" in names or "Lalibela Mountain View Hotel" in names
     assert all("Hotel ABC" != row.get("name") for row in hotels)
+
+
+def test_ethiopia_recommend_lists_seeded_places(graph):
+    values, _ = invoke_message(
+        graph,
+        "I want to visit Ethiopia. Recommend places.",
+        "ethiopia-browse-1",
+    )
+    dest_rows = values["agent_results"]["destination"]["results"]
+    names = {row["name"] for row in dest_rows}
+    assert "Gorgora" in names
+    assert "Lalibela" in names
+    assert "Addis Ababa" in names
+    assert values["trip_context"]["destination_id"] is None
+    message = values.get("final_message") or ""
+    assert "couldn't find" not in message.lower()
+    assert "Gorgora" in message
+    assert "Lalibela" in message
+    assert "Hotel ABC" not in message
+    assert "Dubai" not in message
+

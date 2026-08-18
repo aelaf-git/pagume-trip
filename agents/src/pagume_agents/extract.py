@@ -47,10 +47,19 @@ def extract_trip_context(text: str, existing: TripContext | None = None) -> Trip
     ctx = existing.model_copy() if existing else TripContext()
     lowered = text.lower()
 
+    matched_city = False
     for alias, canonical in KNOWN_DESTINATIONS:
         if alias in lowered:
             ctx.destination_query = canonical
+            ctx.browse_destinations = False
+            matched_city = True
             break
+
+    if not matched_city and ("ethiopia" in lowered or "ethiopian" in lowered):
+        ctx.browse_destinations = True
+        ctx.destination_query = None
+        ctx.wants_hotel = False
+        ctx.wants_transport = False
 
     budget_match = re.search(
         r"([\d,]+(?:\.\d+)?)\s*(etb|birr)", lowered, flags=re.IGNORECASE

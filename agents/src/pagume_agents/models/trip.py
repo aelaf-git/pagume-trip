@@ -26,6 +26,7 @@ class TripContext(BaseModel):
     wants_tour: bool = False
     wants_car_rental: bool = False
     tour_query: str | None = None
+    browse_destinations: bool = False
     user_id: str | None = None
 
     @property

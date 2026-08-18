@@ -125,17 +125,17 @@ class HttpInventoryClient:
         seats: int | None = None,
         service_type: str | None = None,
     ) -> list[Vehicle]:
+        params = _query_params(
+            {
+                "destination_id": destination_id,
+                "seats": seats,
+                "service_type": service_type,
+            }
+        )
+        if not params.get("destination_id"):
+            return []
         with self._client() as client:
-            response = client.get(
-                "/v1/transport",
-                params=_query_params(
-                    {
-                        "destination_id": destination_id,
-                        "seats": seats,
-                        "service_type": service_type,
-                    }
-                ),
-            )
+            response = client.get("/v1/transport", params=params)
             response.raise_for_status()
             return [Vehicle.model_validate(row) for row in response.json()["results"]]
 

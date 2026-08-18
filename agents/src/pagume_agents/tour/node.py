@@ -25,6 +25,12 @@ def make_tour_node(
         started = time.perf_counter()
         ctx = TripContext.model_validate(state.get("trip_context") or {})
         dest_id = ctx.destination_id or ""
+        if not dest_id:
+            return {
+                "agent_results": {"tour": {"status": "error", "results": []}},
+                "errors": [{"agent": "tour", "message": "Missing destination_id"}],
+                "progress": [make_progress("Finding tours", "error")],
+            }
         tours = client.search_tour_packages(
             destination_id=dest_id, query=ctx.tour_query, guests=ctx.guests
         )
