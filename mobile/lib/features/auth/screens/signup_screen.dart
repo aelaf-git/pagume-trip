@@ -1,185 +1,173 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/user_provider.dart';
+import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_text_field.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
-  bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
+class _SignupScreenState extends ConsumerState<SignupScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+
+  Future<void> _signup() async {
+    // Validate all fields are filled
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
+    // Validate password match
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Simulate API call
+      await Future.delayed(const Duration(seconds: 2));
+
+      // ✅ Save user data to secure storage via Riverpod
+      final userNotifier = ref.read(userProvider.notifier);
+      await userNotifier.login(
+        token: 'demo_token_${DateTime.now().millisecondsSinceEpoch}',
+        userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
+        name: _nameController.text,
+        email: _emailController.text,
+        isVerified: false,
+      );
+
+      if (mounted) {
+        context.go('/home');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Signup failed: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-
       appBar: AppBar(
         title: const Text('Sign Up'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 30),
-
-            const Text(
-              '✈️ Create Account',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Spacer(flex: 1),
+              const Text(
+                '✨ Create Account',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
               ),
-            ),
-
-            const SizedBox(height: 8),
-
-            const Text(
-              'Create your account and start your journey',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+              const SizedBox(height: 8),
+              const Text(
+                'Start your journey with Pagume Trip',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.grey600,
+                ),
               ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Full Name
-            TextField(
-              decoration: InputDecoration(
+              const SizedBox(height: 24),
+              CustomTextField(
+                controller: _nameController,
                 hintText: 'Full Name',
-                prefixIcon: const Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                prefixIcon: Icons.person,
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Email
-            TextField(
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
+              const SizedBox(height: 16),
+              CustomTextField(
+                controller: _emailController,
                 hintText: 'Email',
-                prefixIcon: const Icon(Icons.email),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                prefixIcon: Icons.email,
+                keyboardType: TextInputType.emailAddress,
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Password
-            TextField(
-              obscureText: !_isPasswordVisible,
-              decoration: InputDecoration(
+              const SizedBox(height: 16),
+              CustomTextField(
+                controller: _passwordController,
                 hintText: 'Password',
-                prefixIcon: const Icon(Icons.lock),
-
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isPasswordVisible
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
-                  },
-                ),
-
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Confirm Password
-            TextField(
-              obscureText: !_isConfirmPasswordVisible,
-              decoration: InputDecoration(
-                hintText: 'Confirm Password',
-                prefixIcon: const Icon(Icons.lock_outline),
-
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isConfirmPasswordVisible
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isConfirmPasswordVisible =
-                          !_isConfirmPasswordVisible;
-                    });
-                  },
-                ),
-
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Create Account button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Signup functionality will be added later.
+                prefixIcon: Icons.lock,
+                suffixIcon: _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                obscureText: _obscurePassword,
+                onSuffixIconTap: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Create Account',
-                  style: TextStyle(fontSize: 16),
-                ),
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Back to Login
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Already have an account?'),
-
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/login');
-                  },
-                  child: const Text('Login'),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-          ],
+              const SizedBox(height: 16),
+              CustomTextField(
+                controller: _confirmPasswordController,
+                hintText: 'Confirm Password',
+                prefixIcon: Icons.lock_outline,
+                suffixIcon: _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                obscureText: _obscureConfirmPassword,
+                onSuffixIconTap: () {
+                  setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                },
+              ),
+              const SizedBox(height: 24),
+              CustomButton(
+                text: 'Sign Up',
+                onPressed: _signup,
+                isLoading: _isLoading,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Already have an account?',
+                    style: TextStyle(color: AppColors.grey600),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      context.go('/login');
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                    ),
+                    child: const Text('Login'),
+                  ),
+                ],
+              ),
+              const Spacer(flex: 2),
+            ],
+          ),
         ),
       ),
     );
