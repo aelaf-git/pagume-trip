@@ -3,7 +3,9 @@ import 'core/constants/app_colors.dart';
 import 'features/home/home_screen.dart';
 import 'features/ai_chat/screens/chat_screen.dart';
 import 'features/trip_planner/trip_planner_screen.dart';
-import 'features/profile/profile_screen.dart';  // ✅ This should be correct
+import 'features/profile/profile_screen.dart';
+import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/signup_screen.dart';
 
 void main() {
   runApp(const PagumeTripApp());
@@ -29,7 +31,12 @@ class PagumeTripApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/signup': (context) => const SignupScreen(),
+        '/main': (context) => const MainScreen(),
+      },
     );
   }
 }
@@ -48,7 +55,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const ChatScreen(),
     const TripPlannerScreen(),
-    const ProfileScreen(),  // ✅ Now this should work
+    const ProfileScreen(),
   ];
 
   @override
