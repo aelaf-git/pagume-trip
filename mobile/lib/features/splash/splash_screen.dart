@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -7,49 +8,30 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(  // ✅ Fixes overflow
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              const Text(
-                'Pagume Trip',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.accent,
-                ),
-              ),
-              const Text(
-                'Curated discovery awaits.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                ),
-              ),
+              _buildHeader(),
               const SizedBox(height: 32),
-
-              // Where to next?
               const Text(
                 'Where to next?',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Featured Destinations
               const Text(
                 'Featured Destinations',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white70,
+                  color: AppColors.grey700,
                 ),
               ),
               const SizedBox(height: 12),
@@ -57,16 +39,22 @@ class SplashScreen extends StatelessWidget {
                 title: 'Lalibela',
                 subtitle: 'Ancient rock-hewn marvels',
                 emoji: '⛪',
+                context: context,
+              ),
+              const SizedBox(height: 12),
+              _buildFeaturedDestination(
+                title: 'Gondar',
+                subtitle: 'Castles and history',
+                emoji: '🏰',
+                context: context,
               ),
               const SizedBox(height: 24),
-
-              // Curated Tours
               const Text(
                 'Curated Tours',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white70,
+                  color: AppColors.grey700,
                 ),
               ),
               const SizedBox(height: 12),
@@ -76,6 +64,7 @@ class SplashScreen extends StatelessWidget {
                 locations: 'Lalibela, Gondar, Axum',
                 description: 'Immerse yourself in ancient history and stunning...',
                 price: '\$1,250',
+                context: context,
               ),
               const SizedBox(height: 12),
               _buildCuratedTourCard(
@@ -84,7 +73,9 @@ class SplashScreen extends StatelessWidget {
                 locations: 'Awassa, Arba Minch',
                 description: 'Relax by the scenic lakes and explore local wildlife.',
                 price: '\$680',
+                context: context,
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -92,50 +83,85 @@ class SplashScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pagume Trip',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        ),
+        Text(
+          'Curated discovery awaits.',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.grey600,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFeaturedDestination({
     required String title,
     required String subtitle,
     required String emoji,
+    required BuildContext context,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 32)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () {
+        context.go('/home');  // ✅ Navigates to Home
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.grey200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.05),
+              blurRadius: 10,
             ),
-          ),
-          const Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.white54,
-            size: 16,
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 32)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppColors.grey600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: AppColors.grey400,
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -146,13 +172,20 @@ class SplashScreen extends StatelessWidget {
     required String locations,
     required String description,
     required String price,
+    required BuildContext context,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: AppColors.grey200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            blurRadius: 10,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,13 +195,13 @@ class SplashScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.accent,
+                  color: AppColors.accent.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   duration,
-                  style: const TextStyle(
-                    color: Colors.black,
+                  style: TextStyle(
+                    color: AppColors.accentDark,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -177,8 +210,8 @@ class SplashScreen extends StatelessWidget {
               const Spacer(),
               Text(
                 price,
-                style: const TextStyle(
-                  color: AppColors.accent,
+                style: TextStyle(
+                  color: AppColors.primary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -189,7 +222,6 @@ class SplashScreen extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -197,7 +229,7 @@ class SplashScreen extends StatelessWidget {
           Text(
             locations,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: AppColors.grey600,
               fontSize: 12,
             ),
           ),
@@ -205,7 +237,7 @@ class SplashScreen extends StatelessWidget {
           Text(
             description,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: AppColors.grey600,
               fontSize: 12,
             ),
           ),
@@ -213,9 +245,11 @@ class SplashScreen extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: () {
+                context.go('/home');  // ✅ Navigates to Home
+              },
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.accent,
+                foregroundColor: AppColors.primary,
               ),
               child: const Text('View'),
             ),
