@@ -167,28 +167,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     chatNotifier.sendUserMessage(text);
 
     // 2. Create ONE ID for the activity message.
-    //
-    // This is important because we use the same ID later
-    // when updating the activity steps.
-    final activityId =
-    DateTime.now().millisecondsSinceEpoch.toString();
+    final activityId = DateTime.now().millisecondsSinceEpoch.toString();
 
+    // 3. Add initial activity message (FIXED: removed extra 'id' and 'steps' param here)
     chatNotifier.addAIResponse(
       '🔍 Pagume is planning your trip...',
       isActivity: true,
-
-      // FIX:
-      // addAIResponse now accepts steps.
-      steps: _agentSteps
-          .map((step) => '⏳ $step')
-          .toList(),
-
-      // FIX:
-      // Use the same ID that updateMessage() will use.
-
     );
 
-    // 3. Update steps one by one.
+    // 4. Update steps one by one.
     for (int i = 0; i < _agentSteps.length; i++) {
       await Future.delayed(
         const Duration(milliseconds: 500),
@@ -221,14 +208,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     }
 
-    // 4. Remove activity message while keeping
-    // the other messages.
+    // 5. Remove activity message while keeping the other messages.
     await Future.delayed(
       const Duration(milliseconds: 300),
     );
 
-    final currentMessages =
-    List<ChatMessage>.from(chatNotifier.state.messages);
+    final currentMessages = List<ChatMessage>.from(chatNotifier.state.messages);
 
     final remainingMessages = currentMessages
         .where((msg) => msg.id != activityId)
@@ -236,7 +221,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     chatNotifier.replaceMessages(remainingMessages);
 
-    // 5. Add final AI response.
+    // 6. Add final AI response.
     final response = _getAIResponse(text);
 
     chatNotifier.addAIResponse(
@@ -244,7 +229,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       isActivity: false,
     );
 
-    // 6. Create proposal if it's a destination request.
+    // 7. Create proposal if it's a destination request.
     final lowerText = text.toLowerCase();
 
     if (lowerText.contains('lalibela') ||
@@ -347,19 +332,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   // ============================================================
-  // RESPONSE BUILDERS
+  // RESPONSE BUILDERS (ALL ASTERISKS REMOVED)
   // ============================================================
 
   String _buildLalibelaResponse() {
     return '''
-⛪ **Lalibela Trip - 4 Days**
+⛪ Lalibela Trip - 4 Days
 
-🏨 **Accommodation:** Lalibela Lodge - 12,000 ETB ⭐ 4.5
-🚗 **Transport:** Private Car with Driver - 8,000 ETB
-👨‍🏫 **Tour Guide:** Guided Church Tour - 4,000 ETB
-🏛️ **Activities:** Rock Church Tours - 3,000 ETB
+🏨 Accommodation: Lalibela Lodge - 12,000 ETB (4.5 stars)
+🚗 Transport: Private Car with Driver - 8,000 ETB
+👨‍🏫 Tour Guide: Guided Church Tour - 4,000 ETB
+🏛️ Activities: Rock Church Tours - 3,000 ETB
 
-💰 **Total:** ~27,000 ETB
+💰 Total: ~27,000 ETB
 
 Would you like me to create this trip for you? 🎯
 ''';
@@ -367,13 +352,13 @@ Would you like me to create this trip for you? 🎯
 
   String _buildGondarResponse() {
     return '''
-🏰 **Gondar Trip - 3 Days**
+🏰 Gondar Trip - 3 Days
 
-🏨 **Accommodation:** Goha Hotel - 8,000 ETB ⭐ 4.2
-🚗 **Transport:** Private Car - 5,000 ETB
-👨‍🏫 **Tour Guide:** Castle Tour - 3,000 ETB
+🏨 Accommodation: Goha Hotel - 8,000 ETB (4.2 stars)
+🚗 Transport: Private Car - 5,000 ETB
+👨‍🏫 Tour Guide: Castle Tour - 3,000 ETB
 
-💰 **Total:** ~18,000 ETB
+💰 Total: ~18,000 ETB
 
 Shall I proceed with the booking? 📋
 ''';
@@ -381,14 +366,14 @@ Shall I proceed with the booking? 📋
 
   String _buildAxumResponse() {
     return '''
-🗿 **Axum Trip - 3 Days**
+🗿 Axum Trip - 3 Days
 
-🏨 **Accommodation:** Axum Hotel - 9,000 ETB ⭐ 4.0
-🚗 **Transport:** SUV with Driver - 6,000 ETB
-👨‍🏫 **Tour Guide:** Historical Tour - 3,500 ETB
-🏛️ **Activities:** Stele Field Tour - 2,500 ETB
+🏨 Accommodation: Axum Hotel - 9,000 ETB (4.0 stars)
+🚗 Transport: SUV with Driver - 6,000 ETB
+👨‍🏫 Tour Guide: Historical Tour - 3,500 ETB
+🏛️ Activities: Stele Field Tour - 2,500 ETB
 
-💰 **Total:** ~21,000 ETB
+💰 Total: ~21,000 ETB
 
 Ready to explore ancient history? 🏛️
 ''';
@@ -396,15 +381,15 @@ Ready to explore ancient history? 🏛️
 
   String _buildGorgoraResponse() {
     return '''
-🌅 **Gorgora Trip - 4 Days**
+🌅 Gorgora Trip - 4 Days
 
-🏨 **Accommodation:** Gorgora Resort - 18,000 ETB
-🚗 **Transport:** Private Minibus - 20,000 ETB
-🚤 **Activities:** Boat Trip on Lake Tana - 6,000 ETB
+🏨 Accommodation: Gorgora Resort - 18,000 ETB
+🚗 Transport: Private Minibus - 20,000 ETB
+🚤 Activities: Boat Trip on Lake Tana - 6,000 ETB
 
-💰 **Total:** ~44,000 ETB
+💰 Total: ~44,000 ETB
 
-📅 **Itinerary:**
+📅 Itinerary:
 Day 1: Travel → Check-in → Resort
 Day 2: Boat trip → Lake Tana exploration
 Day 3: Cultural activities → Relaxation
@@ -416,14 +401,14 @@ Ready to book? 🚀
 
   String _buildBudgetResponse() {
     return '''
-💰 **Budget Analysis**
+💰 Budget Analysis
 
 Your Lalibela trip:
 • Accommodation: 12,000 ETB
 • Transportation: 8,000 ETB
 • Tour Guide: 4,000 ETB
 • Activities: 3,000 ETB
-• **Total: 27,000 ETB**
+• Total: 27,000 ETB
 
 ✅ Within your budget
 
@@ -433,11 +418,11 @@ Would you like to optimize this itinerary? 🔄
 
   String _buildAccommodationResponse() {
     return '''
-🏨 **Accommodation Options**
+🏨 Accommodation Options
 
-1. **Lalibela Lodge** ⭐ 4.5 - 12,000 ETB
-2. **Maribela Hotel** ⭐ 4.2 - 10,000 ETB
-3. **Tukul Village** ⭐ 4.0 - 8,000 ETB
+1. Lalibela Lodge - 4.5 stars - 12,000 ETB
+2. Maribela Hotel - 4.2 stars - 10,000 ETB
+3. Tukul Village - 4.0 stars - 8,000 ETB
 
 Which one interests you? 🏠
 ''';
@@ -445,7 +430,7 @@ Which one interests you? 🏠
 
   String _buildGreetingResponse() {
     return '''
-👋 **Welcome to Pagume Trip!**
+👋 Welcome to Pagume Trip!
 
 I'm your AI Travel Assistant. I can help you:
 • 🌍 Discover Ethiopian destinations
@@ -455,7 +440,7 @@ I'm your AI Travel Assistant. I can help you:
 • 💰 Manage your budget
 
 Try saying:
-*"I want to visit Lalibela for 4 days with a budget of 40,000 ETB"*
+"I want to visit Lalibela for 4 days with a budget of 40,000 ETB"
 
 Ready to start your journey? ✈️
 ''';
@@ -465,12 +450,12 @@ Ready to start your journey? ✈️
     return '''
 🤔 I understand you're interested in Ethiopian travel!
 
-📋 **Try asking me about:**
-• **Destinations:** Lalibela, Gondar, Axum, Gorgora
-• **Budget:** "I have a budget of 40,000 ETB"
-• **Duration:** "I want to visit for 4 days"
-• **Activities:** "I want a guided tour"
-• **Accommodation:** "I want a comfortable hotel"
+📋 Try asking me about:
+• Destinations: Lalibela, Gondar, Axum, Gorgora
+• Budget: "I have a budget of 40,000 ETB"
+• Duration: "I want to visit for 4 days"
+• Activities: "I want a guided tour"
+• Accommodation: "I want a comfortable hotel"
 
 What would you like to know? 🗺️
 ''';

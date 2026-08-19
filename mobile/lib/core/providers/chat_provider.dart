@@ -68,8 +68,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       messages: [...state.messages, msg],
     );
   }
-
   void sendUserMessage(String text) async {
+    // 1. Add the user's message to the chat
     final userMsg = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
@@ -81,11 +81,53 @@ class ChatNotifier extends StateNotifier<ChatState> {
       messages: [...state.messages, userMsg],
       isProcessing: true,
     );
-    await Future.delayed(const Duration(seconds: 1));
-    addAIResponse("I'm processing your request for '$text'...", isActivity: false);
+
+    // 2. Extract destination
+    String destination = "Addis Ababa, Ethiopia"; // CHANGED DEFAULT TO ETHIOPIA
+
+    if (text.toLowerCase().contains("to ")) {
+      String extracted = text.substring(text.toLowerCase().indexOf("to ") + 3).trim();
+      // Capitalize the first letter
+      extracted = extracted[0].toUpperCase() + extracted.substring(1);
+
+      // If they typed a specific city, use it.
+      destination = extracted + ", Ethiopia";
+    }
+
+    // 3. Simulate AI "thinking"
+    await Future.delayed(const Duration(milliseconds: 500));
+    addAIResponse('⏳ Searching for the best trips matching "$destination"...', isActivity: true, steps: ['🔍 Scanning destinations...']);
+
+    await Future.delayed(const Duration(milliseconds: 800));
+    addAIResponse('⏳ Checking availability and prices...', isActivity: true, steps: ['📊 Comparing flight costs...']);
+
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    // 4. Send the Dynamic Trip Proposal
+    final fakeProposal = TripProposal(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      destination: destination,
+      price: 250.00, // Changed price to be a bit cheaper for local travel
+      currency: "ETB", // CHANGED CURRENCY TO ETHIOPIAN BIRR
+      details: "5-day cultural tour with visits to historical sites and local cuisine.",
+      duration: "5 Days / 4 Nights",
+      status: 'pending',
+    );
+
+    setProposal(fakeProposal);
+
+    // 5. Send the final message
+    addAIResponse(
+      '✅ I found a great match for you!\n\n'
+          '📍 Destination: ${fakeProposal.destination}\n'
+          '⏳ Duration: ${fakeProposal.duration}\n'
+          '💰 Total Price: ${fakeProposal.price} ${fakeProposal.currency}\n\n'
+          'Would you like to book this trip?',
+      isActivity: false,
+    );
+
     state = state.copyWith(isProcessing: false);
   }
-
   void updateMessage(String id, ChatMessage updatedMessage) {
     final updatedList = state.messages.map((msg) {
       if (msg.id == id) return updatedMessage;
@@ -136,8 +178,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
     final updated = state.currentProposal!.copyWith(status: 'accepted');
     state = state.copyWith(currentProposal: updated);
     addAIResponse(
-      '✅ **Booking Confirmed!** ✨ \n\n'
-          'Your trip to ${updated.destination} has been booked.\n'
+      '✅ Booking Confirmed! ✨ \n\n'
+          'Your trip to ${updated.destination} has been booked!\n'
           '💰 Total: \$${updated.price} ${updated.currency}\n'
           '📄 Details: ${updated.details}\n\n'
           'A confirmation email has been sent to your registered email.',
@@ -149,7 +191,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     if (state.currentProposal == null) return;
     state = state.copyWith(currentProposal: null);
     addAIResponse(
-      '❌ **Booking declined.** No charges have been made.\n\n'
+      '❌ Booking declined. No charges have been made.\n\n'
           'Would you like me to suggest alternative options?',
       isActivity: false,
     );
