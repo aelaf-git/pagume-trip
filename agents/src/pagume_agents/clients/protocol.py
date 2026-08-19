@@ -54,6 +54,8 @@ class PagumeInventoryClient(Protocol):
         destination_id: str,
         seats: int | None = None,
         service_type: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[Vehicle]: ...
 
     def search_car_rentals(
@@ -61,6 +63,8 @@ class PagumeInventoryClient(Protocol):
         destination_id: str,
         seats: int | None = None,
         is_4wd: bool | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[Vehicle]: ...
 
     def check_vehicle_availability(
@@ -75,6 +79,8 @@ class PagumeInventoryClient(Protocol):
         destination_id: str,
         query: str | None = None,
         guests: int | None = None,
+        check_in: str | None = None,
+        check_out: str | None = None,
     ) -> list[TourPackage]: ...
 
     def get_package_details(self, package_id: str) -> TourPackage | None: ...

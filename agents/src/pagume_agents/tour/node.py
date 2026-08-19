@@ -32,7 +32,11 @@ def make_tour_node(
                 "progress": [make_progress("Finding tours", "error")],
             }
         tours = client.search_tour_packages(
-            destination_id=dest_id, query=ctx.tour_query, guests=ctx.guests
+            destination_id=dest_id,
+            query=ctx.tour_query,
+            guests=ctx.guests,
+            check_in=ctx.check_in,
+            check_out=ctx.check_out,
         )
         rows = [t.model_dump() for t in tours]
         return {

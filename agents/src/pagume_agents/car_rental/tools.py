@@ -10,11 +10,17 @@ def build_car_rental_tools(client: PagumeInventoryClient) -> list[StructuredTool
         destination_id: str,
         seats: int | None = None,
         is_4wd: bool | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[dict]:
         """Search verified car rentals. Filter by seats and 4WD."""
         return dump_models(
             client.search_car_rentals(
-                destination_id=destination_id, seats=seats, is_4wd=is_4wd
+                destination_id=destination_id,
+                seats=seats,
+                is_4wd=is_4wd,
+                start_date=start_date,
+                end_date=end_date,
             )
         )
 

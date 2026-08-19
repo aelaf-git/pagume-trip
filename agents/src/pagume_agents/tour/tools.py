@@ -10,11 +10,17 @@ def build_tour_tools(client: PagumeInventoryClient) -> list[StructuredTool]:
         destination_id: str,
         query: str | None = None,
         guests: int | None = None,
+        check_in: str | None = None,
+        check_out: str | None = None,
     ) -> list[dict]:
         """Search verified tour packages including boat trips."""
         return dump_models(
             client.search_tour_packages(
-                destination_id=destination_id, query=query, guests=guests
+                destination_id=destination_id,
+                query=query,
+                guests=guests,
+                check_in=check_in,
+                check_out=check_out,
             )
         )
 

@@ -223,6 +223,133 @@ def test_hotel_hold_blocks_second_user_and_search(client):
     assert "hotel_gorgora_resort_a" in [row["id"] for row in restored]
 
 
+def _vehicle_item(**overrides):
+    item = {
+        "service_type": "vehicle",
+        "entity_id": "vehicle_gorgora_a",
+        "name": "Private Land Cruiser with driver",
+        "price_etb": 20000,
+        "check_in": "2026-09-10",
+        "check_out": "2026-09-14",
+    }
+    item.update(overrides)
+    return item
+
+
+def _tour_item(**overrides):
+    item = {
+        "service_type": "tour",
+        "entity_id": "tour_gorgora_boat_a",
+        "name": "Lake Tana Boat Trip A",
+        "price_etb": 6000,
+        "check_in": "2026-09-10",
+        "check_out": "2026-09-10",
+    }
+    item.update(overrides)
+    return item
+
+
+def test_vehicle_hold_blocks_second_user_and_search(client):
+    first = client.post(
+        "/v1/bookings/prepare",
+        json={"user_id": "user_a", "items": [_vehicle_item()]},
+        headers={"Idempotency-Key": "veh-hold-a"},
+    )
+    assert first.status_code == 201
+    clash = client.post(
+        "/v1/bookings/prepare",
+        json={"user_id": "user_b", "items": [_vehicle_item()]},
+        headers={"Idempotency-Key": "veh-hold-b"},
+    )
+    assert clash.status_code == 409
+
+    cars = client.get(
+        "/v1/transport",
+        params={
+            "destination_id": "dest_gorgora",
+            "start_date": "2026-09-10",
+            "end_date": "2026-09-14",
+        },
+    ).json()["results"]
+    assert "vehicle_gorgora_a" not in [row["id"] for row in cars]
+    avail = client.get(
+        "/v1/vehicles/vehicle_gorgora_a/availability",
+        params={"start_date": "2026-09-10", "end_date": "2026-09-14"},
+    ).json()
+    assert avail["available"] is False
+
+    booking_id = first.json()["id"]
+    confirmed = client.post(
+        f"/v1/bookings/{booking_id}/confirm",
+        headers={"Idempotency-Key": "veh-confirm-a"},
+    )
+    assert confirmed.json()["status"] == "CONFIRMED"
+    cancelled = client.post(
+        f"/v1/bookings/{booking_id}/cancel",
+        headers={"Idempotency-Key": "veh-cancel-a"},
+    )
+    assert cancelled.json()["status"] == "CANCELLED"
+    restored = client.get(
+        "/v1/transport",
+        params={
+            "destination_id": "dest_gorgora",
+            "start_date": "2026-09-10",
+            "end_date": "2026-09-14",
+        },
+    ).json()["results"]
+    assert "vehicle_gorgora_a" in [row["id"] for row in restored]
+
+
+def test_tour_hold_blocks_second_user_and_search(client):
+    first = client.post(
+        "/v1/bookings/prepare",
+        json={"user_id": "user_a", "items": [_tour_item()]},
+        headers={"Idempotency-Key": "tour-hold-a"},
+    )
+    assert first.status_code == 201
+    clash = client.post(
+        "/v1/bookings/prepare",
+        json={"user_id": "user_b", "items": [_tour_item()]},
+        headers={"Idempotency-Key": "tour-hold-b"},
+    )
+    assert clash.status_code == 409
+
+    tours = client.get(
+        "/v1/tours",
+        params={
+            "destination_id": "dest_gorgora",
+            "check_in": "2026-09-10",
+            "check_out": "2026-09-10",
+        },
+    ).json()["results"]
+    assert "tour_gorgora_boat_a" not in [row["id"] for row in tours]
+    avail = client.get(
+        "/v1/tours/tour_gorgora_boat_a/availability",
+        params={"date": "2026-09-10", "guests": 2},
+    ).json()
+    assert avail["available"] is False
+
+    booking_id = first.json()["id"]
+    client.post(
+        f"/v1/bookings/{booking_id}/confirm",
+        headers={"Idempotency-Key": "tour-confirm-a"},
+    )
+    cancelled = client.post(
+        f"/v1/bookings/{booking_id}/cancel",
+        headers={"Idempotency-Key": "tour-cancel-a"},
+    )
+    assert cancelled.json()["status"] == "CANCELLED"
+    restored = client.get(
+        "/v1/tours",
+        params={
+            "destination_id": "dest_gorgora",
+            "check_in": "2026-09-10",
+            "check_out": "2026-09-10",
+        },
+    ).json()["results"]
+    assert "tour_gorgora_boat_a" in [row["id"] for row in restored]
+
+
 def test_seeded_destinations(client):
     ids = {row["id"] for row in client.get("/v1/destinations").json()["results"]}
     assert {

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, selectinload
 from pagume_api import models
 from pagume_api.db import get_db
 from pagume_api.geo import date_range
+from pagume_api.reservations import reserved_vehicle_ids
 from pagume_api.schemas import Results, VehicleCreate, VehicleOut
 from pagume_api.serializers import vehicle_out
 
@@ -24,6 +25,8 @@ def _filter_vehicles(
     seats: int | None = None,
     service_type: str | None = None,
     is_4wd: bool | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> list[VehicleOut]:
     vehicles = list(
         db.scalars(
@@ -33,6 +36,8 @@ def _filter_vehicles(
             )
         )
     )
+    needed = date_range(start_date, end_date) if start_date and end_date else None
+    taken = reserved_vehicle_ids(db, needed) if needed else set()
     results: list[VehicleOut] = []
     for vehicle in vehicles:
         if seats is not None and vehicle.seats < seats:
@@ -41,6 +46,12 @@ def _filter_vehicles(
             continue
         if is_4wd is not None and vehicle.is_4wd != is_4wd:
             continue
+        if needed:
+            available = {item.day for item in vehicle.availability}
+            if any(day not in available for day in needed):
+                continue
+            if vehicle.id in taken:
+                continue
         results.append(vehicle_out(vehicle))
     return results
 
@@ -50,11 +61,18 @@ def search_transport(
     destination_id: str,
     seats: int | None = None,
     service_type: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     db: Session = Depends(get_db),
 ) -> Results:
     return Results(
         results=_filter_vehicles(
-            db, destination_id=destination_id, seats=seats, service_type=service_type
+            db,
+            destination_id=destination_id,
+            seats=seats,
+            service_type=service_type,
+            start_date=start_date,
+            end_date=end_date,
         )
     )
 
@@ -82,11 +100,18 @@ def search_car_rentals(
     destination_id: str,
     seats: int | None = None,
     is_4wd: bool | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     db: Session = Depends(get_db),
 ) -> Results:
     return Results(
         results=_filter_vehicles(
-            db, destination_id=destination_id, seats=seats, is_4wd=is_4wd
+            db,
+            destination_id=destination_id,
+            seats=seats,
+            is_4wd=is_4wd,
+            start_date=start_date,
+            end_date=end_date,
         )
     )
 
@@ -103,4 +128,6 @@ def check_vehicle_availability(
         raise HTTPException(status_code=404, detail="Vehicle not found")
     needed = date_range(start_date, end_date)
     available = {item.day for item in vehicle.availability}
-    return {"available": all(day in available for day in needed)}
+    if any(day not in available for day in needed):
+        return {"available": False}
+    return {"available": vehicle_id not in reserved_vehicle_ids(db, needed)}

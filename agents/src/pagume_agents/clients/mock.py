@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, UTC
 from pathlib import Path
 from uuid import uuid4
 
-from pagume_agents.clients.errors import RoomUnavailableError
+from pagume_agents.clients.errors import InventoryUnavailableError
 from pagume_agents.clients.geo import destination_search_rank, haversine_km
 from pagume_agents.models.booking import Booking, BookingItem, BookingStatus
 from pagume_agents.models.inventory import Destination, Hotel, HotelRoom, TourPackage, Vehicle
@@ -49,6 +49,8 @@ class MockInventoryClient:
         self.bookings: dict[str, Booking] = {}
         self._idempotency: dict[str, str] = {}
         self._reservations: dict[tuple[str, str], dict] = {}
+        self._vehicle_reservations: dict[tuple[str, str], dict] = {}
+        self._tour_reservations: dict[tuple[str, str], dict] = {}
         self.confirm_calls: int = 0
         if not empty:
             self._load()
@@ -186,44 +188,93 @@ class MockInventoryClient:
 
     def _expire_holds(self) -> None:
         cutoff = datetime.now(UTC).replace(tzinfo=None) - HOLD_TTL
-        stale = [
-            key
-            for key, row in self._reservations.items()
-            if row["status"] == "HOLD" and row["created_at"] < cutoff
-        ]
-        for key in stale:
-            del self._reservations[key]
+        for store in (
+            self._reservations,
+            self._vehicle_reservations,
+            self._tour_reservations,
+        ):
+            stale = [
+                key
+                for key, row in store.items()
+                if row["status"] == "HOLD" and row["created_at"] < cutoff
+            ]
+            for key in stale:
+                del store[key]
+
+    def _taken_ids(self, store: dict[tuple[str, str], dict], nights: list[str]) -> set[str]:
+        self._expire_holds()
+        needed = set(nights)
+        taken: set[str] = set()
+        for (entity_id, day), row in store.items():
+            if day in needed and row["status"] in {"HOLD", "CONFIRMED"}:
+                taken.add(entity_id)
+        return taken
 
     def _reserved_rooms(self, nights: list[str]) -> set[str]:
-        self._expire_holds()
-        taken: set[str] = set()
-        needed = set(nights)
-        for (room_id, day), row in self._reservations.items():
-            if day in needed and row["status"] in {"HOLD", "CONFIRMED"}:
-                taken.add(room_id)
-        return taken
+        return self._taken_ids(self._reservations, nights)
 
     def _hold_nights(self, booking: Booking) -> None:
         self._expire_holds()
-        pending: list[tuple[str, str]] = []
+        pending_rooms: list[tuple[str, str]] = []
+        pending_vehicles: list[tuple[str, str]] = []
+        pending_tours: list[tuple[str, str]] = []
+        now = datetime.now(UTC).replace(tzinfo=None)
         for item in booking.items:
-            if item.service_type != "hotel":
-                continue
-            if not item.room_id or not item.check_in or not item.check_out:
-                raise ValueError("Hotel items require room_id, check_in, and check_out")
-            hotel = self.get_hotel_details(item.entity_id)
-            if hotel is None or not any(r.id == item.room_id for r in hotel.rooms):
-                raise ValueError("Room does not belong to this hotel")
-            for day in _date_range(item.check_in, item.check_out):
-                key = (item.room_id, day)
-                if key in self._reservations:
-                    raise RoomUnavailableError("Room is no longer available for those dates")
-                pending.append(key)
-        for key in pending:
+            if item.service_type == "hotel":
+                if not item.room_id or not item.check_in or not item.check_out:
+                    raise ValueError("Hotel items require room_id, check_in, and check_out")
+                hotel = self.get_hotel_details(item.entity_id)
+                if hotel is None or not any(r.id == item.room_id for r in hotel.rooms):
+                    raise ValueError("Room does not belong to this hotel")
+                for day in _date_range(item.check_in, item.check_out):
+                    key = (item.room_id, day)
+                    if key in self._reservations:
+                        raise InventoryUnavailableError(
+                            "Room is no longer available for those dates"
+                        )
+                    pending_rooms.append(key)
+            elif item.service_type == "vehicle":
+                if not item.check_in or not item.check_out:
+                    raise ValueError("Vehicle items require check_in and check_out")
+                if not any(v.id == item.entity_id for v in self.vehicles):
+                    raise ValueError("Unknown vehicle")
+                for day in _date_range(item.check_in, item.check_out):
+                    key = (item.entity_id, day)
+                    if key in self._vehicle_reservations:
+                        raise InventoryUnavailableError(
+                            "Vehicle is no longer available for those dates"
+                        )
+                    pending_vehicles.append(key)
+            elif item.service_type == "tour":
+                if not item.check_in:
+                    raise ValueError("Tour items require check_in")
+                if not any(t.id == item.entity_id for t in self.tours):
+                    raise ValueError("Unknown tour")
+                end = item.check_out or item.check_in
+                for day in _date_range(item.check_in, end):
+                    key = (item.entity_id, day)
+                    if key in self._tour_reservations:
+                        raise InventoryUnavailableError(
+                            "Tour is no longer available for those dates"
+                        )
+                    pending_tours.append(key)
+        for key in pending_rooms:
             self._reservations[key] = {
                 "booking_id": booking.id,
                 "status": "HOLD",
-                "created_at": datetime.now(UTC).replace(tzinfo=None),
+                "created_at": now,
+            }
+        for key in pending_vehicles:
+            self._vehicle_reservations[key] = {
+                "booking_id": booking.id,
+                "status": "HOLD",
+                "created_at": now,
+            }
+        for key in pending_tours:
+            self._tour_reservations[key] = {
+                "booking_id": booking.id,
+                "status": "HOLD",
+                "created_at": now,
             }
 
     def _filter_vehicles(
@@ -233,7 +284,11 @@ class MockInventoryClient:
         service_type: str | None = None,
         is_4wd: bool | None = None,
         driver_included: bool | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[Vehicle]:
+        needed = _date_range(start_date, end_date) if start_date and end_date else None
+        taken = self._taken_ids(self._vehicle_reservations, needed) if needed else set()
         results: list[Vehicle] = []
         for vehicle in self.vehicles:
             if vehicle.destination_id != destination_id:
@@ -248,6 +303,11 @@ class MockInventoryClient:
                 continue
             if driver_included is not None and vehicle.driver_included != driver_included:
                 continue
+            if needed:
+                if any(day not in vehicle.available_dates for day in needed):
+                    continue
+                if vehicle.id in taken:
+                    continue
             results.append(vehicle)
         return results
 
@@ -256,9 +316,15 @@ class MockInventoryClient:
         destination_id: str,
         seats: int | None = None,
         service_type: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[Vehicle]:
         return self._filter_vehicles(
-            destination_id, seats=seats, service_type=service_type
+            destination_id,
+            seats=seats,
+            service_type=service_type,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def search_car_rentals(
@@ -266,8 +332,16 @@ class MockInventoryClient:
         destination_id: str,
         seats: int | None = None,
         is_4wd: bool | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[Vehicle]:
-        return self._filter_vehicles(destination_id, seats=seats, is_4wd=is_4wd)
+        return self._filter_vehicles(
+            destination_id,
+            seats=seats,
+            is_4wd=is_4wd,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
     def check_vehicle_availability(
         self,
@@ -279,15 +353,21 @@ class MockInventoryClient:
         if vehicle is None:
             return False
         needed = _date_range(start_date, end_date)
-        return all(day in vehicle.available_dates for day in needed)
+        if any(day not in vehicle.available_dates for day in needed):
+            return False
+        return vehicle_id not in self._taken_ids(self._vehicle_reservations, needed)
 
     def search_tour_packages(
         self,
         destination_id: str,
         query: str | None = None,
         guests: int | None = None,
+        check_in: str | None = None,
+        check_out: str | None = None,
     ) -> list[TourPackage]:
         q = (query or "").strip().lower()
+        needed = _date_range(check_in, check_out or check_in) if check_in else None
+        taken = self._taken_ids(self._tour_reservations, needed) if needed else set()
         results: list[TourPackage] = []
         for tour in self.tours:
             if tour.destination_id != destination_id:
@@ -303,6 +383,11 @@ class MockInventoryClient:
             ).lower()
             if q and q not in haystack:
                 continue
+            if needed:
+                if any(day not in tour.available_dates for day in needed):
+                    continue
+                if tour.id in taken:
+                    continue
             results.append(tour)
         return results
 
@@ -320,7 +405,9 @@ class MockInventoryClient:
             return False
         if guests > tour.seats_remaining or guests > tour.max_participants:
             return False
-        return date in tour.available_dates
+        if date not in tour.available_dates:
+            return False
+        return package_id not in self._taken_ids(self._tour_reservations, [date])
 
     def create_trip(self, trip: Trip) -> Trip:
         if not trip.id:
@@ -378,10 +465,19 @@ class MockInventoryClient:
             self._idempotency[f"confirm:{idempotency_key}"] = booking.id
             return booking
         self._expire_holds()
-        hotel_items = [item for item in booking.items if item.service_type == "hotel"]
-        held = [row for row in self._reservations.values() if row["booking_id"] == booking.id]
-        if hotel_items and not held:
-            raise RoomUnavailableError("Hold expired; room is no longer available")
+        stores = (
+            self._reservations,
+            self._vehicle_reservations,
+            self._tour_reservations,
+        )
+        held = [
+            row
+            for store in stores
+            for row in store.values()
+            if row["booking_id"] == booking.id
+        ]
+        if booking.items and not held:
+            raise InventoryUnavailableError("Hold expired; inventory is no longer available")
         for row in held:
             row["status"] = "CONFIRMED"
         updated = booking.model_copy(
@@ -407,9 +503,14 @@ class MockInventoryClient:
         booking = self.bookings.get(booking_id)
         if booking is None:
             raise KeyError(f"Unknown booking {booking_id}")
-        drop = [key for key, row in self._reservations.items() if row["booking_id"] == booking.id]
-        for key in drop:
-            del self._reservations[key]
+        for store in (
+            self._reservations,
+            self._vehicle_reservations,
+            self._tour_reservations,
+        ):
+            drop = [key for key, row in store.items() if row["booking_id"] == booking.id]
+            for key in drop:
+                del store[key]
         updated = booking.model_copy(update={"status": BookingStatus.CANCELLED})
         self.bookings[booking.id] = updated
         self._idempotency[f"cancel:{idempotency_key}"] = booking.id

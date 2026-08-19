@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from pagume_api import models
 from pagume_api.db import get_db
+from pagume_api.geo import date_range
+from pagume_api.reservations import reserved_tour_ids
 from pagume_api.schemas import Results, TourCreate, TourPackageOut
 from pagume_api.serializers import tour_out
 
@@ -19,6 +21,8 @@ def search_tours(
     destination_id: str,
     q: str | None = None,
     guests: int | None = None,
+    check_in: str | None = None,
+    check_out: str | None = None,
     db: Session = Depends(get_db),
 ) -> Results:
     tours = list(
@@ -30,6 +34,10 @@ def search_tours(
         )
     )
     query = (q or "").strip().lower()
+    needed = None
+    if check_in:
+        needed = date_range(check_in, check_out or check_in)
+    taken = reserved_tour_ids(db, needed) if needed else set()
     results: list[TourPackageOut] = []
     for tour in tours:
         if guests is not None and (
@@ -41,6 +49,12 @@ def search_tours(
         ).lower()
         if query and query not in haystack:
             continue
+        if needed:
+            available = {item.day for item in tour.availability}
+            if any(day not in available for day in needed):
+                continue
+            if tour.id in taken:
+                continue
         results.append(tour_out(tour))
     return Results(results=results)
 
@@ -82,9 +96,8 @@ def check_tour_availability(
     if tour is None:
         raise HTTPException(status_code=404, detail="Tour not found")
     days = {item.day for item in tour.availability}
-    available = (
-        date in days
-        and guests <= tour.seats_remaining
-        and guests <= tour.max_participants
-    )
-    return {"available": available}
+    if date not in days:
+        return {"available": False}
+    if guests > tour.seats_remaining or guests > tour.max_participants:
+        return {"available": False}
+    return {"available": package_id not in reserved_tour_ids(db, [date])}

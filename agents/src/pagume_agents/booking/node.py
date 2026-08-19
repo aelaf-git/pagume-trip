@@ -8,7 +8,7 @@ from uuid import uuid4
 from langgraph.types import interrupt
 
 from pagume_agents.booking.tools import build_booking_tools
-from pagume_agents.clients.errors import RoomUnavailableError
+from pagume_agents.clients.errors import InventoryUnavailableError
 from pagume_agents.clients.protocol import PagumeInventoryClient
 from pagume_agents.models.trip import TripContext
 from pagume_agents.observability import make_event, make_progress
@@ -38,8 +38,9 @@ def _booking_items(option: dict[str, Any], ctx: TripContext) -> list[dict[str, A
             "price_etb": item["cost_etb"],
             "currency": "ETB",
         }
-        if item.get("kind") == "hotel":
-            row["room_id"] = extra.get("room_id")
+        if item.get("kind") in {"hotel", "vehicle", "tour"}:
+            if item.get("kind") == "hotel":
+                row["room_id"] = extra.get("room_id")
             row["check_in"] = extra.get("check_in") or check_in
             row["check_out"] = extra.get("check_out") or check_out
         items.append(row)
@@ -71,11 +72,11 @@ def make_booking_node(client: PagumeInventoryClient) -> Callable:
                     "user_id": ctx.user_id,
                 }
             )
-        except RoomUnavailableError as exc:
+        except InventoryUnavailableError as exc:
             return {
                 "errors": [{"agent": "booking", "message": str(exc)}],
                 "agent_results": {"booking": {"status": "error", "results": []}},
-                "progress": [make_progress("That room is no longer available")],
+                "progress": [make_progress("That option is no longer available")],
             }
 
         approval_payload = {
@@ -142,13 +143,13 @@ def make_booking_node(client: PagumeInventoryClient) -> Callable:
                     "idempotency_key": f"confirm:{prepared['id']}",
                 }
             )
-        except RoomUnavailableError as exc:
+        except InventoryUnavailableError as exc:
             return {
                 "pending_approval": None,
                 "authorization": authorization,
                 "errors": [{"agent": "booking", "message": str(exc)}],
                 "agent_results": {"booking": {"status": "error", "results": []}},
-                "progress": [make_progress("That room is no longer available")],
+                "progress": [make_progress("That option is no longer available")],
             }
         trip = state.get("trip") or {}
         trip = {

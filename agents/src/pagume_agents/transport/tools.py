@@ -10,6 +10,8 @@ def build_transport_tools(client: PagumeInventoryClient) -> list[StructuredTool]
         destination_id: str,
         seats: int | None = None,
         service_type: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[dict]:
         """Search private cars, minibuses, and other registered transport."""
         return dump_models(
@@ -17,6 +19,8 @@ def build_transport_tools(client: PagumeInventoryClient) -> list[StructuredTool]
                 destination_id=destination_id,
                 seats=seats,
                 service_type=service_type,
+                start_date=start_date,
+                end_date=end_date,
             )
         )
 

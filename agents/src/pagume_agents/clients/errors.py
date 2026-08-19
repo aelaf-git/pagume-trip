@@ -1,2 +1,5 @@
-class RoomUnavailableError(Exception):
-    """The requested room nights are already held or confirmed."""
+class InventoryUnavailableError(Exception):
+    """Requested hotel, vehicle, or tour nights are already held or confirmed."""
+
+
+RoomUnavailableError = InventoryUnavailableError

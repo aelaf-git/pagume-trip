@@ -35,7 +35,12 @@ def make_transport_node(
                 ],
                 "progress": [make_progress("Comparing transportation", "error")],
             }
-        vehicles = client.search_transport(destination_id=dest_id, seats=ctx.guests)
+        vehicles = client.search_transport(
+            destination_id=dest_id,
+            seats=ctx.guests,
+            start_date=ctx.check_in,
+            end_date=ctx.check_out,
+        )
         rows = [v.model_dump() for v in vehicles]
         return {
             "agent_results": {

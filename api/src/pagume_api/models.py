@@ -110,6 +110,9 @@ class Vehicle(Base):
     availability: Mapped[list["VehicleAvailability"]] = relationship(
         back_populates="vehicle", cascade="all, delete-orphan"
     )
+    reservations: Mapped[list["VehicleReservation"]] = relationship(
+        back_populates="vehicle", cascade="all, delete-orphan"
+    )
 
 
 class VehicleAvailability(Base):
@@ -121,6 +124,23 @@ class VehicleAvailability(Base):
     day: Mapped[str] = mapped_column(String(10), index=True)
 
     vehicle: Mapped[Vehicle] = relationship(back_populates="availability")
+
+
+class VehicleReservation(Base):
+    __tablename__ = "vehicle_reservations"
+    __table_args__ = (UniqueConstraint("vehicle_id", "day", name="uq_vehicle_res_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    vehicle_id: Mapped[str] = mapped_column(ForeignKey("vehicles.id"), index=True)
+    day: Mapped[str] = mapped_column(String(10), index=True)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="HOLD")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
+
+    vehicle: Mapped[Vehicle] = relationship(back_populates="reservations")
+    booking: Mapped["Booking"] = relationship(back_populates="vehicle_reservations")
 
 
 class TourPackage(Base):
@@ -147,6 +167,9 @@ class TourPackage(Base):
     availability: Mapped[list["TourAvailability"]] = relationship(
         back_populates="tour", cascade="all, delete-orphan"
     )
+    reservations: Mapped[list["TourReservation"]] = relationship(
+        back_populates="tour", cascade="all, delete-orphan"
+    )
 
 
 class TourAvailability(Base):
@@ -158,6 +181,23 @@ class TourAvailability(Base):
     day: Mapped[str] = mapped_column(String(10), index=True)
 
     tour: Mapped[TourPackage] = relationship(back_populates="availability")
+
+
+class TourReservation(Base):
+    __tablename__ = "tour_reservations"
+    __table_args__ = (UniqueConstraint("tour_id", "day", name="uq_tour_res_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tour_id: Mapped[str] = mapped_column(ForeignKey("tour_packages.id"), index=True)
+    day: Mapped[str] = mapped_column(String(10), index=True)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="HOLD")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
+
+    tour: Mapped[TourPackage] = relationship(back_populates="reservations")
+    booking: Mapped["Booking"] = relationship(back_populates="tour_reservations")
 
 
 class Trip(Base):
@@ -210,6 +250,12 @@ class Booking(Base):
         back_populates="booking", cascade="all, delete-orphan"
     )
     reservations: Mapped[list["RoomReservation"]] = relationship(
+        back_populates="booking", cascade="all, delete-orphan"
+    )
+    vehicle_reservations: Mapped[list["VehicleReservation"]] = relationship(
+        back_populates="booking", cascade="all, delete-orphan"
+    )
+    tour_reservations: Mapped[list["TourReservation"]] = relationship(
         back_populates="booking", cascade="all, delete-orphan"
     )
 

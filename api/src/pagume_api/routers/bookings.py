@@ -8,9 +8,11 @@ from pagume_api import models
 from pagume_api.db import get_db
 from pagume_api.reservations import (
     ConflictError,
-    confirm_hotel_nights,
+    confirm_inventory_holds,
     hold_hotel_nights,
-    release_hotel_nights,
+    hold_tour_nights,
+    hold_vehicle_nights,
+    release_inventory_holds,
 )
 from pagume_api.schemas import BookingOut, PrepareBookingIn
 from pagume_api.serializers import booking_out
@@ -104,6 +106,42 @@ def prepare_booking(
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             except ConflictError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
+        elif item.service_type == "vehicle":
+            if not item.check_in or not item.check_out:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Vehicle items require check_in and check_out",
+                )
+            try:
+                hold_vehicle_nights(
+                    db,
+                    booking_id=booking.id,
+                    vehicle_id=item.entity_id,
+                    check_in=item.check_in,
+                    check_out=item.check_out,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            except ConflictError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+        elif item.service_type == "tour":
+            if not item.check_in:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Tour items require check_in",
+                )
+            try:
+                hold_tour_nights(
+                    db,
+                    booking_id=booking.id,
+                    tour_id=item.entity_id,
+                    check_in=item.check_in,
+                    check_out=item.check_out or item.check_in,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            except ConflictError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
     _store_idempotency(db, "prepare", idempotency_key, booking.id)
     db.flush()
     booking = db.scalar(_booking_query().where(models.Booking.id == booking.id))
@@ -134,7 +172,7 @@ def confirm_booking(
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.status != "CONFIRMED":
         try:
-            confirm_hotel_nights(db, booking.id)
+            confirm_inventory_holds(db, booking.id)
         except ConflictError as exc:
             booking.status = "FAILED"
             db.flush()
@@ -161,7 +199,7 @@ def cancel_booking(
     booking = db.scalar(_booking_query().where(models.Booking.id == booking_id))
     if booking is None:
         raise HTTPException(status_code=404, detail="Booking not found")
-    release_hotel_nights(db, booking.id)
+    release_inventory_holds(db, booking.id)
     booking.status = "CANCELLED"
     _store_idempotency(db, "cancel", idempotency_key, booking.id)
     db.flush()

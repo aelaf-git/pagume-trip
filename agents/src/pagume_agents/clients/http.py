@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import httpx
 
-from pagume_agents.clients.errors import RoomUnavailableError
+from pagume_agents.clients.errors import InventoryUnavailableError
 from pagume_agents.models.booking import Booking
 from pagume_agents.models.inventory import Destination, Hotel, HotelRoom, TourPackage, Vehicle
 from pagume_agents.models.trip import ItineraryItem, Trip
@@ -125,12 +125,16 @@ class HttpInventoryClient:
         destination_id: str,
         seats: int | None = None,
         service_type: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[Vehicle]:
         params = _query_params(
             {
                 "destination_id": destination_id,
                 "seats": seats,
                 "service_type": service_type,
+                "start_date": start_date,
+                "end_date": end_date,
             }
         )
         if not params.get("destination_id"):
@@ -145,6 +149,8 @@ class HttpInventoryClient:
         destination_id: str,
         seats: int | None = None,
         is_4wd: bool | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> list[Vehicle]:
         with self._client() as client:
             response = client.get(
@@ -154,6 +160,8 @@ class HttpInventoryClient:
                         "destination_id": destination_id,
                         "seats": seats,
                         "is_4wd": is_4wd,
+                        "start_date": start_date,
+                        "end_date": end_date,
                     }
                 ),
             )
@@ -176,6 +184,8 @@ class HttpInventoryClient:
         destination_id: str,
         query: str | None = None,
         guests: int | None = None,
+        check_in: str | None = None,
+        check_out: str | None = None,
     ) -> list[TourPackage]:
         with self._client() as client:
             response = client.get(
@@ -185,6 +195,8 @@ class HttpInventoryClient:
                         "destination_id": destination_id,
                         "q": query,
                         "guests": guests,
+                        "check_in": check_in,
+                        "check_out": check_out,
                     }
                 ),
             )
@@ -239,7 +251,7 @@ class HttpInventoryClient:
                 headers={"Idempotency-Key": idempotency_key},
             )
             if response.status_code == 409:
-                raise RoomUnavailableError(response.text)
+                raise InventoryUnavailableError(response.text)
             response.raise_for_status()
             return Booking.model_validate(response.json())
 
@@ -250,7 +262,7 @@ class HttpInventoryClient:
                 headers={"Idempotency-Key": idempotency_key},
             )
             if response.status_code == 409:
-                raise RoomUnavailableError(response.text)
+                raise InventoryUnavailableError(response.text)
             response.raise_for_status()
             return Booking.model_validate(response.json())
 
