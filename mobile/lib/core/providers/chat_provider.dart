@@ -1,8 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ============================================
-// CHAT MESSAGE MODEL
-// ============================================
 class ChatMessage {
   final String id;
   final String text;
@@ -39,65 +36,17 @@ class ChatMessage {
   }
 }
 
-// ============================================
-// TRIP PROPOSAL MODEL
-// ============================================
-class TripProposal {
-  final String id;
-  final String destination;
-  final String duration;
-  final double price;
-  final String currency;
-  final String details;
-  final String status;
-
-  TripProposal({
-    required this.id,
-    required this.destination,
-    required this.duration,
-    required this.price,
-    required this.currency,
-    required this.details,
-    this.status = 'pending',
-  });
-
-  TripProposal copyWith({
-    String? id,
-    String? destination,
-    String? duration,
-    double? price,
-    String? currency,
-    String? details,
-    String? status,
-  }) {
-    return TripProposal(
-      id: id ?? this.id,
-      destination: destination ?? this.destination,
-      duration: duration ?? this.duration,
-      price: price ?? this.price,
-      currency: currency ?? this.currency,
-      details: details ?? this.details,
-      status: status ?? this.status,
-    );
-  }
-}
-
-// ============================================
-// CHAT STATE
-// ============================================
 class ChatState {
   final List<ChatMessage> messages;
   final bool isProcessing;
   final bool isConnected;
   final String? error;
-  final TripProposal? currentProposal;
 
   ChatState({
     this.messages = const [],
     this.isProcessing = false,
     this.isConnected = false,
     this.error,
-    this.currentProposal,
   });
 
   ChatState copyWith({
@@ -105,34 +54,27 @@ class ChatState {
     bool? isProcessing,
     bool? isConnected,
     String? error,
-    TripProposal? currentProposal,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
       isProcessing: isProcessing ?? this.isProcessing,
       isConnected: isConnected ?? this.isConnected,
       error: error ?? this.error,
-      currentProposal: currentProposal ?? this.currentProposal,
     );
   }
 }
 
-// ============================================
-// CHAT PROVIDER
-// ============================================
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   return ChatNotifier();
 });
 
-// ============================================
-// CHAT NOTIFIER
-// ============================================
 class ChatNotifier extends StateNotifier<ChatState> {
   ChatNotifier() : super(ChatState());
 
   void addMessage(ChatMessage message) {
     state = state.copyWith(
       messages: [...state.messages, message],
+      error: null,
     );
   }
 
@@ -164,6 +106,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     final updatedMessages = state.messages.map((msg) {
       return msg.id == id ? updatedMessage : msg;
     }).toList();
+
     state = state.copyWith(messages: updatedMessages);
   }
 
@@ -185,38 +128,5 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   void clearError() {
     state = state.copyWith(error: null);
-  }
-
-  // ============================================
-  // TRIP PROPOSAL METHODS
-  // ============================================
-  void setProposal(TripProposal proposal) {
-    state = state.copyWith(currentProposal: proposal);
-  }
-
-  void acceptProposal() {
-    if (state.currentProposal == null) return;
-
-    final updated = state.currentProposal!.copyWith(status: 'accepted');
-    state = state.copyWith(currentProposal: updated);
-
-    addAIResponse(
-      '✅ **Booking Confirmed!** 🎉\n\n'
-          'Your trip to ${updated.destination} has been booked.\n'
-          '💰 Total: ${updated.price} ${updated.currency}\n'
-          '📋 Details: ${updated.details}\n\n'
-          'A confirmation email has been sent to your registered email.',
-    );
-  }
-
-  void declineProposal() {
-    if (state.currentProposal == null) return;
-
-    state = state.copyWith(currentProposal: null);
-
-    addAIResponse(
-      '❌ Booking declined. No charges have been made.\n\n'
-          'Would you like me to suggest alternative options?',
-    );
   }
 }
