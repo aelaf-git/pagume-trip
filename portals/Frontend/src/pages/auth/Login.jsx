@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { Compass } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import Card from "../../components/common/Card";
 import Input from "../../components/common/Input";
