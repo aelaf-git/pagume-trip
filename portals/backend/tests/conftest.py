@@ -12,18 +12,18 @@ from main import app
 from src.api.deps import get_db
 from src.db.base_class import Base
 
-# Use an in-memory SQLite database for testing as fallback,
-# but ideally we use a real Postgres+PostGIS database.
+# Use PostgreSQL with PostGIS for testing
 SQLALCHEMY_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL", 
-    "sqlite+aiosqlite:///:memory:"
+    "postgresql+asyncpg://testuser:testpassword@localhost:5432/testdb"
 )
 
-# Connect args needed for sqlite but not postgres
-connect_args = {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
+connect_args = {}
 
 engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args=connect_args
+    SQLALCHEMY_DATABASE_URL, 
+    connect_args=connect_args,
+    echo=False
 )
 
 TestingSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
