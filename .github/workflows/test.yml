@@ -5,10 +5,12 @@ on:
     branches: [ main, uat, ui, portals-dev ]
     paths:
       - 'portals/backend/**'
+      - '.github/workflows/**'
   pull_request:
     branches: [ main, uat, ui, portals-dev ]
     paths:
       - 'portals/backend/**'
+      - '.github/workflows/**'
 
 jobs:
   test:
