@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react"
-import { Plus, Pencil, Trash2, Copy, Pause, Play, Compass, Search } from "lucide-react"
+import { Plus, Pencil, Trash2, Copy, Pause, Play, Search } from "lucide-react"
 import Card from "../../common/Card"
 import Button from "../../common/Button"
 import Badge from "../../common/Badge"
@@ -189,7 +189,7 @@ export default function PackageDashboard({ onEditNew, onEditExisting }) {
       ) : filtered.length === 0 ? (
         <Card>
           <div className="flex flex-col items-center py-12 text-center">
-            <Compass className="h-10 w-10 text-gray-300 mb-3" />
+            <img src="/pagume_logo.png" alt="" className="h-10 w-10 object-contain opacity-40 mb-3" />
             <p className="text-sm text-gray-500">
               {packages.length === 0 ? "No packages yet. Create your first tour package." : "No packages match your filters."}
             </p>

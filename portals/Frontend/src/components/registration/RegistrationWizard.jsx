@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Compass, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import StepIndicator from "./StepIndicator";
@@ -87,7 +87,7 @@ export default function RegistrationWizard({ category }) {
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-2 justify-center mb-8">
-          <Compass className="h-7 w-7 text-brand-600" />
+          <img src="/pagume_logo.png" alt="Pagume Trip" className="h-7 w-7 object-contain" />
           <span className="text-lg font-bold text-gray-900">Pagume Trip</span>
         </div>
 
