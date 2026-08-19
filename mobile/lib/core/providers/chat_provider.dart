@@ -129,4 +129,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
   void clearError() {
     state = state.copyWith(error: null);
   }
+  void declineProposal() {
+    if (state.currentProposal == null) return;
+
+    state = state.copyWith(currentProposal: null);
+
+    addAIResponse(
+      '❌ **Booking declined.** No charges have been made.\\n\\n'
+          'Would you like me to suggest alternative options?',
+    );
+  }
 }
