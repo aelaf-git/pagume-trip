@@ -185,7 +185,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       // FIX:
       // Use the same ID that updateMessage() will use.
-      id: activityId,
+
     );
 
     // 3. Update steps one by one.
