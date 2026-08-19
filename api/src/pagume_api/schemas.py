@@ -162,6 +162,9 @@ class BookingItemIn(BaseModel):
     name: str
     price_etb: float
     currency: str = "ETB"
+    room_id: str | None = None
+    check_in: str | None = None
+    check_out: str | None = None
 
 
 class PrepareBookingIn(BaseModel):

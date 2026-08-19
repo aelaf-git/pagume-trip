@@ -92,3 +92,27 @@ def test_guardrails_keep_llm_respond_instead_of_forcing_hotel():
     llm_choice = SupervisorDecision(next_agent="respond", task="present")
     clamped = _apply_supervisor_guardrails(llm_choice, state)
     assert clamped.next_agent == "respond"
+
+
+def test_fallback_circuit_after_catalog_goes_to_respond():
+    decision = fallback_decision(
+        {
+            "trip_context": {
+                "browse_destinations": True,
+                "wants_circuit": True,
+                "destination_id": None,
+                "guests": 1,
+            },
+            "agent_results": {
+                "destination": {
+                    "status": "success",
+                    "results": [
+                        {"id": "dest_addis", "name": "Addis Ababa"},
+                        {"id": "dest_lalibela", "name": "Lalibela"},
+                    ],
+                }
+            },
+            "user_message": "I want to visit all of them. one by one.",
+        }
+    )
+    assert decision.next_agent == "respond"

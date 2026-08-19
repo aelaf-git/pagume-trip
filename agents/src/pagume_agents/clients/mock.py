@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, UTC
 from pathlib import Path
 from uuid import uuid4
 
+from pagume_agents.clients.errors import RoomUnavailableError
 from pagume_agents.clients.geo import destination_search_rank, haversine_km
 from pagume_agents.models.booking import Booking, BookingItem, BookingStatus
 from pagume_agents.models.inventory import Destination, Hotel, HotelRoom, TourPackage, Vehicle
@@ -17,6 +18,9 @@ def _load_json(path: Path) -> list[dict]:
     if not path.exists():
         return []
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+HOLD_TTL = timedelta(minutes=15)
 
 
 def _date_range(check_in: str, check_out: str) -> list[str]:
@@ -44,6 +48,7 @@ class MockInventoryClient:
         self.trips: dict[str, Trip] = {}
         self.bookings: dict[str, Booking] = {}
         self._idempotency: dict[str, str] = {}
+        self._reservations: dict[tuple[str, str], dict] = {}
         self.confirm_calls: int = 0
         if not empty:
             self._load()
@@ -134,6 +139,10 @@ class MockInventoryClient:
                 needed = _date_range(check_in, check_out)
                 if any(day not in hotel.available_dates for day in needed):
                     continue
+                taken = self._reserved_rooms(needed)
+                rooms = [r for r in rooms if r.id not in taken]
+                if not rooms:
+                    continue
             filtered = hotel.model_copy(deep=True)
             filtered.rooms = rooms
             results.append(filtered)
@@ -171,7 +180,51 @@ class MockInventoryClient:
         if not any(r.id == room_id for r in hotel.rooms):
             return False
         needed = _date_range(check_in, check_out)
-        return all(day in hotel.available_dates for day in needed)
+        if any(day not in hotel.available_dates for day in needed):
+            return False
+        return room_id not in self._reserved_rooms(needed)
+
+    def _expire_holds(self) -> None:
+        cutoff = datetime.now(UTC).replace(tzinfo=None) - HOLD_TTL
+        stale = [
+            key
+            for key, row in self._reservations.items()
+            if row["status"] == "HOLD" and row["created_at"] < cutoff
+        ]
+        for key in stale:
+            del self._reservations[key]
+
+    def _reserved_rooms(self, nights: list[str]) -> set[str]:
+        self._expire_holds()
+        taken: set[str] = set()
+        needed = set(nights)
+        for (room_id, day), row in self._reservations.items():
+            if day in needed and row["status"] in {"HOLD", "CONFIRMED"}:
+                taken.add(room_id)
+        return taken
+
+    def _hold_nights(self, booking: Booking) -> None:
+        self._expire_holds()
+        pending: list[tuple[str, str]] = []
+        for item in booking.items:
+            if item.service_type != "hotel":
+                continue
+            if not item.room_id or not item.check_in or not item.check_out:
+                raise ValueError("Hotel items require room_id, check_in, and check_out")
+            hotel = self.get_hotel_details(item.entity_id)
+            if hotel is None or not any(r.id == item.room_id for r in hotel.rooms):
+                raise ValueError("Room does not belong to this hotel")
+            for day in _date_range(item.check_in, item.check_out):
+                key = (item.room_id, day)
+                if key in self._reservations:
+                    raise RoomUnavailableError("Room is no longer available for those dates")
+                pending.append(key)
+        for key in pending:
+            self._reservations[key] = {
+                "booking_id": booking.id,
+                "status": "HOLD",
+                "created_at": datetime.now(UTC).replace(tzinfo=None),
+            }
 
     def _filter_vehicles(
         self,
@@ -303,6 +356,7 @@ class MockInventoryClient:
             status=BookingStatus.PENDING,
             idempotency_key=idempotency_key,
         )
+        self._hold_nights(booking)
         self.bookings[booking.id] = booking
         self._idempotency[idempotency_key] = booking.id
         return booking
@@ -323,6 +377,13 @@ class MockInventoryClient:
         if booking.status == BookingStatus.CONFIRMED:
             self._idempotency[f"confirm:{idempotency_key}"] = booking.id
             return booking
+        self._expire_holds()
+        hotel_items = [item for item in booking.items if item.service_type == "hotel"]
+        held = [row for row in self._reservations.values() if row["booking_id"] == booking.id]
+        if hotel_items and not held:
+            raise RoomUnavailableError("Hold expired; room is no longer available")
+        for row in held:
+            row["status"] = "CONFIRMED"
         updated = booking.model_copy(
             update={
                 "status": BookingStatus.CONFIRMED,
@@ -346,6 +407,9 @@ class MockInventoryClient:
         booking = self.bookings.get(booking_id)
         if booking is None:
             raise KeyError(f"Unknown booking {booking_id}")
+        drop = [key for key, row in self._reservations.items() if row["booking_id"] == booking.id]
+        for key in drop:
+            del self._reservations[key]
         updated = booking.model_copy(update={"status": BookingStatus.CANCELLED})
         self.bookings[booking.id] = updated
         self._idempotency[f"cancel:{idempotency_key}"] = booking.id

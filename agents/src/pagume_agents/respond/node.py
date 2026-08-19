@@ -4,10 +4,14 @@ from typing import Any, Callable
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from pagume_agents.extract import is_trip_intent
+from pagume_agents.extract import is_trip_intent, missing_for_this_turn
 from pagume_agents.models.trip import TripContext
 from pagume_agents.observability import make_event, make_progress
-from pagume_agents.respond.prompt import CHITCHAT_FALLBACK, RESPOND_SYSTEM
+from pagume_agents.respond.prompt import (
+    CHITCHAT_FALLBACK,
+    CHITCHAT_SYSTEM,
+    RESPOND_SYSTEM,
+)
 from pagume_agents.shared.conversation import format_transcript, human_message_count
 from pagume_agents.state import TripState
 
@@ -46,6 +50,14 @@ def _latest_user_text(state: TripState) -> str:
         if type_ in ("human", "user") and content:
             return str(content)
     return ""
+
+
+def _build_chat_payload(conversation: str = "", latest_user_message: str = "") -> str:
+    """Conversation-only payload — no inventory framing for small talk."""
+    return (
+        f"latest_user_message: {latest_user_message or '(none)'}\n"
+        f"conversation:\n{conversation or '(no prior turns)'}"
+    )
 
 
 def _build_respond_user_payload(
@@ -91,18 +103,15 @@ def _build_respond_user_payload(
             day_lines = [f"  Day {e['day']}: {e['title']}" for e in itinerary]
             option_block += "\nitinerary:\n" + "\n".join(day_lines)
 
-    missing: list[str] = []
-    if not ctx.check_in or not ctx.check_out:
-        missing.append("travel dates (check-in / check-out)")
-    if not ctx.guests:
-        missing.append("number of guests")
-    if not ctx.budget_etb:
-        missing.append("budget")
+    missing = missing_for_this_turn(latest_user_message, ctx)
 
     return (
         f"latest_user_message: {latest_user_message or '(none)'}\n"
         f"conversation:\n{conversation or '(no prior turns)'}\n"
         f"destination: {dest_name}\n"
+        f"wants_circuit: {ctx.wants_circuit}\n"
+        f"check_in: {ctx.check_in or 'unknown'}\n"
+        f"check_out: {ctx.check_out or 'unknown'}\n"
         f"duration_days: {ctx.duration_days or 'unknown'}\n"
         f"guests: {ctx.guests or 'unknown'}\n"
         f"budget_etb: {ctx.budget_etb or 'unknown'}\n"
@@ -174,21 +183,29 @@ def make_respond_node(llm: Any | None = None) -> Callable:
         conversation = format_transcript(state.get("messages"))
         latest = _latest_user_text(state)
 
-        def _llm_message(fallback: str) -> str:
+        def _llm_message(fallback: str, *, chat_only: bool = False) -> str:
             if llm is None:
                 return fallback
             try:
-                payload = _build_respond_user_payload(
-                    ctx,
-                    results,
-                    option,
-                    itinerary,
-                    conversation=conversation,
-                    latest_user_message=latest,
-                )
+                if chat_only:
+                    system = CHITCHAT_SYSTEM
+                    payload = _build_chat_payload(
+                        conversation=conversation,
+                        latest_user_message=latest,
+                    )
+                else:
+                    system = RESPOND_SYSTEM
+                    payload = _build_respond_user_payload(
+                        ctx,
+                        results,
+                        option,
+                        itinerary,
+                        conversation=conversation,
+                        latest_user_message=latest,
+                    )
                 response = llm.invoke(
                     [
-                        SystemMessage(content=RESPOND_SYSTEM),
+                        SystemMessage(content=system),
                         HumanMessage(content=payload),
                     ]
                 )
@@ -198,7 +215,7 @@ def make_respond_node(llm: Any | None = None) -> Callable:
 
         # Ordinary chat: greet, identity, off-topic — do not treat as a failed search
         if dest_empty and not is_trip_intent(latest, ctx):
-            message = _llm_message(CHITCHAT_FALLBACK)
+            message = _llm_message(CHITCHAT_FALLBACK, chat_only=True)
             return {
                 "final_message": message,
                 "messages": [AIMessage(content=message)],
@@ -225,17 +242,28 @@ def make_respond_node(llm: Any | None = None) -> Callable:
         # Catalog browse: template on the first turn, LLM once the session has history
         if not ctx.destination_id:
             template = _destination_catalog_message(dest_rows)
-            use_session_llm = llm is not None and human_message_count(state.get("messages")) > 1
+            use_session_llm = llm is not None and (
+                ctx.wants_circuit or human_message_count(state.get("messages")) > 1
+            )
             message = _llm_message(template) if use_session_llm else template
+            progress_label = (
+                "Sketching your Ethiopia circuit"
+                if ctx.wants_circuit
+                else "Here are verified places you can visit"
+            )
             return {
                 "final_message": message,
                 "messages": [AIMessage(content=message)],
-                "progress": [make_progress("Here are verified places you can visit")],
+                "progress": [make_progress(progress_label)],
                 "events": [
                     make_event(
                         agent="respond",
                         task="present",
-                        result_summary={"catalog": True, "count": len(dest_rows)},
+                        result_summary={
+                            "catalog": True,
+                            "circuit": ctx.wants_circuit,
+                            "count": len(dest_rows),
+                        },
                     )
                 ],
             }

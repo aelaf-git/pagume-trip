@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 
+from pagume_agents.clients.errors import RoomUnavailableError
 from pagume_agents.models.booking import Booking
 from pagume_agents.models.inventory import Destination, Hotel, HotelRoom, TourPackage, Vehicle
 from pagume_agents.models.trip import ItineraryItem, Trip
@@ -237,6 +238,8 @@ class HttpInventoryClient:
                 json={"items": items, "user_id": user_id},
                 headers={"Idempotency-Key": idempotency_key},
             )
+            if response.status_code == 409:
+                raise RoomUnavailableError(response.text)
             response.raise_for_status()
             return Booking.model_validate(response.json())
 
@@ -246,6 +249,8 @@ class HttpInventoryClient:
                 f"/v1/bookings/{booking_id}/confirm",
                 headers={"Idempotency-Key": idempotency_key},
             )
+            if response.status_code == 409:
+                raise RoomUnavailableError(response.text)
             response.raise_for_status()
             return Booking.model_validate(response.json())
 

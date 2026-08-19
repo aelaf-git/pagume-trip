@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, selectinload
 from pagume_api import models
 from pagume_api.db import get_db
 from pagume_api.geo import date_range
+from pagume_api.reservations import reserved_room_ids
 from pagume_api.schemas import HotelCreate, HotelOut, Results
 from pagume_api.serializers import hotel_out, room_out
 
@@ -48,6 +49,11 @@ def search_hotels(
         available = {item.day for item in hotel.availability}
         if needed and any(day not in available for day in needed):
             continue
+        if needed:
+            taken = reserved_room_ids(db, needed)
+            rooms = [r for r in rooms if r.id not in taken]
+            if not rooms:
+                continue
         payload = hotel_out(hotel)
         payload.rooms = [room_out(r) for r in rooms]
         results.append(payload)
@@ -116,4 +122,6 @@ def check_room_availability(
         raise HTTPException(status_code=404, detail="Room not found")
     needed = date_range(check_in, check_out)
     available = {item.day for item in hotel.availability}
-    return {"available": all(day in available for day in needed)}
+    if any(day not in available for day in needed):
+        return {"available": False}
+    return {"available": room_id not in reserved_room_ids(db, needed)}

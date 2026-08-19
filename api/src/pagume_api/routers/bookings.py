@@ -6,6 +6,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from pagume_api import models
 from pagume_api.db import get_db
+from pagume_api.reservations import (
+    ConflictError,
+    confirm_hotel_nights,
+    hold_hotel_nights,
+    release_hotel_nights,
+)
 from pagume_api.schemas import BookingOut, PrepareBookingIn
 from pagume_api.serializers import booking_out
 
@@ -74,8 +80,30 @@ def prepare_booking(
                 name=item.name,
                 price_etb=item.price_etb,
                 currency=item.currency,
+                room_id=item.room_id,
+                check_in=item.check_in,
+                check_out=item.check_out,
             )
         )
+        if item.service_type == "hotel":
+            if not item.room_id or not item.check_in or not item.check_out:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Hotel items require room_id, check_in, and check_out",
+                )
+            try:
+                hold_hotel_nights(
+                    db,
+                    booking_id=booking.id,
+                    hotel_id=item.entity_id,
+                    room_id=item.room_id,
+                    check_in=item.check_in,
+                    check_out=item.check_out,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            except ConflictError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
     _store_idempotency(db, "prepare", idempotency_key, booking.id)
     db.flush()
     booking = db.scalar(_booking_query().where(models.Booking.id == booking.id))
@@ -105,6 +133,12 @@ def confirm_booking(
     if booking is None:
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.status != "CONFIRMED":
+        try:
+            confirm_hotel_nights(db, booking.id)
+        except ConflictError as exc:
+            booking.status = "FAILED"
+            db.flush()
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         booking.status = "CONFIRMED"
         booking.payment_status = "AUTHORIZED"
         booking.confirmation_code = f"PT-{booking.id[-5:].upper()}"
@@ -127,6 +161,7 @@ def cancel_booking(
     booking = db.scalar(_booking_query().where(models.Booking.id == booking_id))
     if booking is None:
         raise HTTPException(status_code=404, detail="Booking not found")
+    release_hotel_nights(db, booking.id)
     booking.status = "CANCELLED"
     _store_idempotency(db, "cancel", idempotency_key, booking.id)
     db.flush()

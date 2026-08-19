@@ -123,6 +123,9 @@ def booking_out(row: models.Booking) -> BookingOut:
                 name=item.name,
                 price_etb=item.price_etb,
                 currency=item.currency,
+                room_id=item.room_id,
+                check_in=item.check_in,
+                check_out=item.check_out,
             )
             for item in row.items
         ],

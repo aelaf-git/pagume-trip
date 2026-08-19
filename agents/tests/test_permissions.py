@@ -14,7 +14,10 @@ def test_confirm_booking_without_approval_does_not_call_client(
                 "service_type": "hotel",
                 "entity_id": "hotel_gorgora_resort_a",
                 "name": "Gorgora Lakeside Resort",
-                "price_etb": 18000,
+                    "price_etb": 18000,
+                    "room_id": "room_resort_a_family",
+                    "check_in": "2026-09-10",
+                    "check_out": "2026-09-14",
             }
         ],
         idempotency_key="prep-1",
@@ -36,7 +39,10 @@ def test_confirm_booking_with_approval(mock_client: MockInventoryClient):
                 "service_type": "hotel",
                 "entity_id": "hotel_gorgora_resort_a",
                 "name": "Gorgora Lakeside Resort",
-                "price_etb": 18000,
+                    "price_etb": 18000,
+                    "room_id": "room_resort_a_family",
+                    "check_in": "2026-09-10",
+                    "check_out": "2026-09-14",
             }
         ],
         idempotency_key="prep-2",

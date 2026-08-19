@@ -37,6 +37,7 @@ def test_supervisor_user_payload_includes_browse_and_names():
     assert "Conversation so far:" in payload
     assert "Latest user message:" in payload
     assert "browse_destinations: True" in payload
+    assert "wants_circuit: False" in payload
     assert "Gorgora" in payload
     assert "Lalibela" in payload
     assert "Proposed pipeline" not in payload

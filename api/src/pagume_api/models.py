@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from datetime import datetime, UTC
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
@@ -65,6 +67,9 @@ class HotelRoom(Base):
     currency: Mapped[str] = mapped_column(String(8), default="ETB")
 
     hotel: Mapped[Hotel] = relationship(back_populates="rooms")
+    reservations: Mapped[list["RoomReservation"]] = relationship(
+        back_populates="room", cascade="all, delete-orphan"
+    )
 
 
 class HotelAvailability(Base):
@@ -204,6 +209,9 @@ class Booking(Base):
     items: Mapped[list["BookingItem"]] = relationship(
         back_populates="booking", cascade="all, delete-orphan"
     )
+    reservations: Mapped[list["RoomReservation"]] = relationship(
+        back_populates="booking", cascade="all, delete-orphan"
+    )
 
 
 class BookingItem(Base):
@@ -216,8 +224,28 @@ class BookingItem(Base):
     name: Mapped[str] = mapped_column(String(255))
     price_etb: Mapped[float] = mapped_column(Float)
     currency: Mapped[str] = mapped_column(String(8), default="ETB")
+    room_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    check_in: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    check_out: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     booking: Mapped[Booking] = relationship(back_populates="items")
+
+
+class RoomReservation(Base):
+    __tablename__ = "room_reservations"
+    __table_args__ = (UniqueConstraint("room_id", "day", name="uq_room_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    room_id: Mapped[str] = mapped_column(ForeignKey("hotel_rooms.id"), index=True)
+    day: Mapped[str] = mapped_column(String(10), index=True)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="HOLD")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
+
+    room: Mapped[HotelRoom] = relationship(back_populates="reservations")
+    booking: Mapped[Booking] = relationship(back_populates="reservations")
 
 
 class IdempotencyKey(Base):

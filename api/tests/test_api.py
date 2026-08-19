@@ -103,6 +103,9 @@ def test_trip_and_idempotent_booking(client):
                     "entity_id": "hotel_gorgora_resort_a",
                     "name": "Gorgora Lakeside Resort",
                     "price_etb": 18000,
+                    "room_id": "room_resort_a_family",
+                    "check_in": "2026-09-10",
+                    "check_out": "2026-09-14",
                 }
             ],
         },
@@ -119,6 +122,9 @@ def test_trip_and_idempotent_booking(client):
                     "entity_id": "hotel_gorgora_resort_a",
                     "name": "Gorgora Lakeside Resort",
                     "price_etb": 18000,
+                    "room_id": "room_resort_a_family",
+                    "check_in": "2026-09-10",
+                    "check_out": "2026-09-14",
                 }
             ],
         },
@@ -134,6 +140,87 @@ def test_trip_and_idempotent_booking(client):
     assert first.json()["status"] == "CONFIRMED"
     assert first.json()["id"] == second.json()["id"]
     assert first.json()["confirmation_code"] == second.json()["confirmation_code"]
+
+
+def _hotel_item(**overrides):
+    item = {
+        "service_type": "hotel",
+        "entity_id": "hotel_gorgora_resort_a",
+        "name": "Gorgora Lakeside Resort",
+        "price_etb": 18000,
+        "room_id": "room_resort_a_family",
+        "check_in": "2026-09-10",
+        "check_out": "2026-09-14",
+    }
+    item.update(overrides)
+    return item
+
+
+def test_hotel_hold_blocks_second_user_and_search(client):
+    first = client.post(
+        "/v1/bookings/prepare",
+        json={"user_id": "user_a", "items": [_hotel_item()]},
+        headers={"Idempotency-Key": "hold-a"},
+    )
+    assert first.status_code == 201
+    clash = client.post(
+        "/v1/bookings/prepare",
+        json={"user_id": "user_b", "items": [_hotel_item()]},
+        headers={"Idempotency-Key": "hold-b"},
+    )
+    assert clash.status_code == 409
+
+    hotels = client.get(
+        "/v1/hotels",
+        params={
+            "destination_id": "dest_gorgora",
+            "guests": 6,
+            "check_in": "2026-09-10",
+            "check_out": "2026-09-14",
+        },
+    ).json()["results"]
+    ids = [row["id"] for row in hotels]
+    assert "hotel_gorgora_resort_a" not in ids
+
+    room = client.get(
+        "/v1/hotels/hotel_gorgora_resort_a/rooms/room_resort_a_family/availability",
+        params={"check_in": "2026-09-10", "check_out": "2026-09-14"},
+    ).json()
+    assert room["available"] is False
+
+    booking_id = first.json()["id"]
+    confirmed = client.post(
+        f"/v1/bookings/{booking_id}/confirm",
+        headers={"Idempotency-Key": "confirm-a"},
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["status"] == "CONFIRMED"
+    still_hidden = client.get(
+        "/v1/hotels",
+        params={
+            "destination_id": "dest_gorgora",
+            "guests": 6,
+            "check_in": "2026-09-10",
+            "check_out": "2026-09-14",
+        },
+    ).json()["results"]
+    assert "hotel_gorgora_resort_a" not in [row["id"] for row in still_hidden]
+
+    cancelled = client.post(
+        f"/v1/bookings/{booking_id}/cancel",
+        headers={"Idempotency-Key": "cancel-a"},
+    )
+    assert cancelled.json()["status"] == "CANCELLED"
+    restored = client.get(
+        "/v1/hotels",
+        params={
+            "destination_id": "dest_gorgora",
+            "guests": 6,
+            "check_in": "2026-09-10",
+            "check_out": "2026-09-14",
+        },
+    ).json()["results"]
+    assert "hotel_gorgora_resort_a" in [row["id"] for row in restored]
 
 
 def test_seeded_destinations(client):

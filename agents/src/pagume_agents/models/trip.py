@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserPreferences(BaseModel):
@@ -27,6 +29,7 @@ class TripContext(BaseModel):
     wants_car_rental: bool = False
     tour_query: str | None = None
     browse_destinations: bool = False
+    wants_circuit: bool = False
     user_id: str | None = None
 
     @property
@@ -34,6 +37,34 @@ class TripContext(BaseModel):
         if self.duration_days is None:
             return 1
         return max(self.duration_days, 1)
+
+
+class TripContextPatch(BaseModel):
+    """LLM slot-fill. Null means this message did not mention the field."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    destination_query: str | None = None
+    check_in: str | None = None
+    check_out: str | None = None
+    duration_days: int | None = None
+    guests: int | None = None
+    budget_etb: float | None = None
+    wants_hotel: bool | None = None
+    wants_transport: bool | None = None
+    wants_tour: bool | None = None
+    wants_car_rental: bool | None = None
+    tour_query: str | None = None
+    browse_destinations: bool | None = None
+    wants_circuit: bool | None = None
+    preferences: list[str] | None = None
+
+    @classmethod
+    def model_json_schema(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        schema = super().model_json_schema(*args, **kwargs)
+        if isinstance(schema, dict) and (schema.get("type") == "object" or "properties" in schema):
+            schema.setdefault("additionalProperties", False)
+        return schema
 
 
 class ItineraryItem(BaseModel):

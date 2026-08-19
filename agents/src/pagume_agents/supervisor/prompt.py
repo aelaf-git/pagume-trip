@@ -22,6 +22,8 @@ How to choose:
 - Named city and no destination_id yet: destination with that city as query.
 - User picked a city after a catalog browse: destination again with that city.
 - destination ran and destination_id is empty: respond. Do not search hotels.
+- Catalog already listed and wants_circuit (visit all of them / one by one):
+  respond. Do not re-run destination and do not ask them to pick a single city.
 - Hotels only: destination (if needed), then accommodation, then respond.
 - Boat/tour only: destination (if needed), then tour, then respond.
 - Full trip (hotel + car + tour, or plan N days in a city): run only the
@@ -51,7 +53,9 @@ Examples:
 2) Ethiopia recommend, destination not run:
 {"next_agent":"destination","task":"search","params":{"query":""},"reasoning":"Country browse; list verified places."}
 3) Destination catalog listed, destination_id empty:
-{"next_agent":"respond","task":"present","params":{},"reasoning":"Places listed; ask which city they want."}
+{"next_agent":"respond","task":"present","params":{},"reasoning":"Places listed; respond with the catalog or a circuit if they want all of them."}
+3b) Catalog listed, wants_circuit true, destination_id empty:
+{"next_agent":"respond","task":"present","params":{},"reasoning":"They want every listed place; sketch a circuit, do not lock one city yet."}
 4) "Hotels in Lalibela", destination not run:
 {"next_agent":"destination","task":"search","params":{"query":"Lalibela"},"reasoning":"Need Lalibela locked before hotels. No transport yet."}
 5) "Hotels in Lalibela", destination_id set, accommodation not run:

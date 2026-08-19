@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from pagume_agents.extract import extract_trip_context, is_trip_intent, wants_booking
+from pagume_agents.extract import is_trip_intent, resolve_trip_context, wants_booking
 from pagume_agents.models.agent import SupervisorDecision, SupervisorParams
 from pagume_agents.models.trip import TripContext
 from pagume_agents.observability import make_event
@@ -93,6 +93,7 @@ def _supervisor_user_payload(
         f"Conversation so far:\n{conversation or '(no prior turns)'}\n"
         f"Latest user message: {text}\n"
         f"browse_destinations: {context.browse_destinations}\n"
+        f"wants_circuit: {context.wants_circuit}\n"
         f"destination_id: {context.destination_id}\n"
         f"destination_name: {context.destination_name}\n"
         f"destination_query: {context.destination_query}\n"
@@ -136,6 +137,7 @@ def fallback_decision(state: TripState) -> SupervisorDecision:
             params=SupervisorParams(query=query),
         )
     if not ctx.destination_id:
+        # Catalog listed, or they asked to visit every listed place — talk, don't search.
         return SupervisorDecision(next_agent="respond", task="present")
     if ctx.wants_hotel and not results.get("accommodation"):
         return SupervisorDecision(
@@ -224,11 +226,16 @@ def make_supervisor_node(llm: Any | None = None, use_llm: bool = False) -> Calla
         existing = None
         if state.get("trip_context"):
             existing = TripContext.model_validate(state["trip_context"])
-        context = extract_trip_context(text, existing)
+        conversation = format_transcript(state.get("messages"))
+        context = resolve_trip_context(
+            text,
+            existing,
+            llm=llm if use_llm else None,
+            conversation=conversation,
+        )
         raw_results = state.get("agent_results") or {}
         stale = stale_specialist_keys(existing, context, raw_results)
         live_results = {key: value for key, value in raw_results.items() if key not in stale}
-        conversation = format_transcript(state.get("messages"))
         merged = {
             **state,
             "trip_context": context.model_dump(),
