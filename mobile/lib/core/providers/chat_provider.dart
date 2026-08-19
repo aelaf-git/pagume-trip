@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 // --- PROVIDER ---
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
@@ -14,6 +16,7 @@ class ChatState {
   final bool isConnected;
   final String? error;
   final TripProposal? currentProposal;
+  final List<TripProposal> savedTrips;
 
   ChatState({
     this.messages = const [],
@@ -22,6 +25,7 @@ class ChatState {
     this.isConnected = false,
     this.error,
     this.currentProposal,
+    this.savedTrips = const [],
   });
 
   ChatState copyWith({
@@ -31,6 +35,7 @@ class ChatState {
     bool? isConnected,
     String? error,
     TripProposal? currentProposal,
+    List<TripProposal>? savedTrips,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -39,13 +44,43 @@ class ChatState {
       isConnected: isConnected ?? this.isConnected,
       error: error ?? this.error,
       currentProposal: currentProposal ?? this.currentProposal,
+      savedTrips: savedTrips ?? this.savedTrips,
     );
   }
 }
 
 // --- NOTIFIER CLASS ---
 class ChatNotifier extends StateNotifier<ChatState> {
-  ChatNotifier() : super(ChatState());
+  ChatNotifier() : super(ChatState()) {
+    _loadSavedTrips(); // Load trips immediately when app starts
+  }
+
+  // --- PERSISTENCE LOGIC ---
+  Future<void> _loadSavedTrips() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? tripsJson = prefs.getString('saved_trips');
+
+      if (tripsJson != null) {
+        final List<dynamic> decoded = jsonDecode(tripsJson);
+        final List<TripProposal> loadedTrips = decoded.map((json) => TripProposal.fromJson(json)).toList();
+
+        state = state.copyWith(savedTrips: loadedTrips);
+      }
+    } catch (e) {
+      print('Error loading trips: $e');
+    }
+  }
+
+  Future<void> _saveTripsToStorage(List<TripProposal> trips) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<Map<String, dynamic>> jsonList = trips.map((trip) => trip.toJson()).toList();
+      await prefs.setString('saved_trips', jsonEncode(jsonList));
+    } catch (e) {
+      print('Error saving trips: $e');
+    }
+  }
 
   // --- MESSAGE METHODS ---
 
@@ -68,8 +103,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       messages: [...state.messages, msg],
     );
   }
+
   void sendUserMessage(String text) async {
-    // 1. Add the user's message to the chat
     final userMsg = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
@@ -81,53 +116,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
       messages: [...state.messages, userMsg],
       isProcessing: true,
     );
-
-    // 2. Extract destination
-    String destination = "Addis Ababa, Ethiopia"; // CHANGED DEFAULT TO ETHIOPIA
-
-    if (text.toLowerCase().contains("to ")) {
-      String extracted = text.substring(text.toLowerCase().indexOf("to ") + 3).trim();
-      // Capitalize the first letter
-      extracted = extracted[0].toUpperCase() + extracted.substring(1);
-
-      // If they typed a specific city, use it.
-      destination = extracted + ", Ethiopia";
-    }
-
-    // 3. Simulate AI "thinking"
-    await Future.delayed(const Duration(milliseconds: 500));
-    addAIResponse('⏳ Searching for the best trips matching "$destination"...', isActivity: true, steps: ['🔍 Scanning destinations...']);
-
-    await Future.delayed(const Duration(milliseconds: 800));
-    addAIResponse('⏳ Checking availability and prices...', isActivity: true, steps: ['📊 Comparing flight costs...']);
-
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    // 4. Send the Dynamic Trip Proposal
-    final fakeProposal = TripProposal(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      destination: destination,
-      price: 250.00, // Changed price to be a bit cheaper for local travel
-      currency: "ETB", // CHANGED CURRENCY TO ETHIOPIAN BIRR
-      details: "5-day cultural tour with visits to historical sites and local cuisine.",
-      duration: "5 Days / 4 Nights",
-      status: 'pending',
-    );
-
-    setProposal(fakeProposal);
-
-    // 5. Send the final message
-    addAIResponse(
-      '✅ I found a great match for you!\n\n'
-          '📍 Destination: ${fakeProposal.destination}\n'
-          '⏳ Duration: ${fakeProposal.duration}\n'
-          '💰 Total Price: ${fakeProposal.price} ${fakeProposal.currency}\n\n'
-          'Would you like to book this trip?',
-      isActivity: false,
-    );
-
+    await Future.delayed(const Duration(seconds: 1));
+    addAIResponse("I'm processing your request for '$text'...", isActivity: false);
     state = state.copyWith(isProcessing: false);
   }
+
   void updateMessage(String id, ChatMessage updatedMessage) {
     final updatedList = state.messages.map((msg) {
       if (msg.id == id) return updatedMessage;
@@ -148,6 +141,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       isConnected: false,
       error: null,
       currentProposal: null,
+      savedTrips: state.savedTrips,
     );
   }
 
@@ -176,11 +170,21 @@ class ChatNotifier extends StateNotifier<ChatState> {
   void acceptProposal() {
     if (state.currentProposal == null) return;
     final updated = state.currentProposal!.copyWith(status: 'accepted');
-    state = state.copyWith(currentProposal: updated);
+
+    final updatedTrips = List<TripProposal>.from(state.savedTrips)..add(updated);
+
+    state = state.copyWith(
+      currentProposal: updated,
+      savedTrips: updatedTrips,
+    );
+
+    // SAVE TO STORAGE
+    _saveTripsToStorage(updatedTrips);
+
     addAIResponse(
       '✅ Booking Confirmed! ✨ \n\n'
           'Your trip to ${updated.destination} has been booked!\n'
-          '💰 Total: \$${updated.price} ${updated.currency}\n'
+          '💰 Total: ${updated.price} ${updated.currency}\n'
           '📄 Details: ${updated.details}\n\n'
           'A confirmation email has been sent to your registered email.',
       isActivity: false,
@@ -193,6 +197,23 @@ class ChatNotifier extends StateNotifier<ChatState> {
     addAIResponse(
       '❌ Booking declined. No charges have been made.\n\n'
           'Would you like me to suggest alternative options?',
+      isActivity: false,
+    );
+  }
+
+  void cancelTrip(String tripId) {
+    final updatedTrips = state.savedTrips.where((trip) => trip.id != tripId).toList();
+
+    state = state.copyWith(
+      savedTrips: updatedTrips,
+    );
+
+    // SAVE TO STORAGE
+    _saveTripsToStorage(updatedTrips);
+
+    addAIResponse(
+      '❌ Trip cancelled successfully.\n\n'
+          'No charges have been made. Feel free to book another adventure!',
       isActivity: false,
     );
   }
@@ -235,7 +256,7 @@ class ChatMessage {
   }
 }
 
-// --- TRIP PROPOSAL MODEL ---
+// --- TRIP PROPOSAL MODEL (UPDATED FOR JSON) ---
 class TripProposal {
   final String id;
   final String destination;
@@ -254,6 +275,32 @@ class TripProposal {
     required this.duration,
     this.status = 'pending',
   });
+
+  // Convert to JSON for storage
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'destination': destination,
+      'price': price,
+      'currency': currency,
+      'details': details,
+      'status': status,
+      'duration': duration,
+    };
+  }
+
+  // Create from JSON
+  factory TripProposal.fromJson(Map<String, dynamic> json) {
+    return TripProposal(
+      id: json['id'],
+      destination: json['destination'],
+      price: (json['price'] as num).toDouble(),
+      currency: json['currency'],
+      details: json['details'],
+      status: json['status'],
+      duration: json['duration'],
+    );
+  }
 
   TripProposal copyWith({String? status}) {
     return TripProposal(
