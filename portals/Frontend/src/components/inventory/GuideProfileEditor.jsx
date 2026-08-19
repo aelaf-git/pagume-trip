@@ -1,59 +1,68 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Save, MapPin, CalendarRange } from "lucide-react";
-import Card from "../common/Card";
-import Button from "../common/Button";
-import Input from "../common/Input";
-import Checkbox from "../common/Checkbox";
-import Badge from "../common/Badge";
-import { LANGUAGES_OPTIONS } from "../../constants/registrationOptions";
-import { COVERAGE_AREAS } from "../../constants/inventoryOptions";
-import { validateGuide } from "../../utils/inventoryValidation";
-import * as inventoryService from "../../services/inventoryService";
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Plus, Trash2, Save, MapPin, CalendarRange, RefreshCw } from "lucide-react"
+import Card from "../common/Card"
+import Button from "../common/Button"
+import Input from "../common/Input"
+import Checkbox from "../common/Checkbox"
+import Badge from "../common/Badge"
+import { LANGUAGES_OPTIONS } from "../../constants/registrationOptions"
+import { COVERAGE_AREAS } from "../../constants/inventoryOptions"
+import { validateGuide } from "../../utils/inventoryValidation"
+import * as inventoryService from "../../services/inventoryService"
+import { useProviderProfile } from "../../contexts/ProviderProfileContext"
 
-const generateId = () => `range-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+const generateId = () => `range-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
 export default function GuideProfileEditor() {
+  const { profile, updateProfileData, refreshProfile } = useProviderProfile()
+
   const [form, setForm] = useState({
     languages: [],
     coverage: [],
     availabilityRanges: [],
     guidingDayRate: "",
     drivingDayRate: "",
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [coverageInput, setCoverageInput] = useState("");
-  const [notice, setNotice] = useState(null);
-  const noticeTimer = useRef(null);
+    airportTransferRate: "",
+    vehicleType: "",
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [coverageInput, setCoverageInput] = useState("")
+  const [notice, setNotice] = useState(null)
+  const noticeTimer = useRef(null)
 
   const showNotice = (message) => {
-    setNotice(message);
-    clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
-  };
+    setNotice(message)
+    clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(null), 3000)
+  }
 
-  useEffect(() => () => clearTimeout(noticeTimer.current), []);
+  useEffect(() => () => clearTimeout(noticeTimer.current), [])
 
   const loadProfile = useCallback(async () => {
-    const profile = await inventoryService.getGuideProfile();
+    setLoading(true)
+    const guideProfile = await inventoryService.getGuideProfile()
+    const profileData = profile?.profileData || {}
     setForm({
-      languages: profile.languages ?? [],
-      coverage: profile.coverage ?? [],
-      availabilityRanges: (profile.availabilityRanges ?? []).map((range) => ({
+      languages: profileData.languages ?? guideProfile.languages ?? [],
+      coverage: profileData.coverage ?? guideProfile.coverage ?? [],
+      availabilityRanges: (guideProfile.availabilityRanges ?? []).map((range) => ({
         id: range.id ?? generateId(),
         startDate: range.startDate ?? "",
         endDate: range.endDate ?? "",
       })),
-      guidingDayRate: String(profile.guidingDayRate ?? ""),
-      drivingDayRate: String(profile.drivingDayRate ?? ""),
-    });
-    setLoading(false);
-  }, []);
+      guidingDayRate: String(guideProfile.guidingDayRate ?? ""),
+      drivingDayRate: String(guideProfile.drivingDayRate ?? ""),
+      airportTransferRate: String(guideProfile.airportTransferRate ?? ""),
+      vehicleType: guideProfile.vehicleType ?? "",
+    })
+    setLoading(false)
+  }, [profile])
 
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+    loadProfile()
+  }, [loadProfile])
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -95,23 +104,38 @@ export default function GuideProfileEditor() {
   };
 
   const handleSave = async () => {
-    const validationErrors = validateGuide(form);
-    if (Object.keys(validationErrors).length > 0) return setErrors(validationErrors);
+    const validationErrors = validateGuide(form)
+    if (Object.keys(validationErrors).length > 0) return setErrors(validationErrors)
 
-    setSaving(true);
+    setSaving(true)
     try {
-      await inventoryService.updateGuideProfile({
+      const guideData = {
         languages: form.languages,
         coverage: form.coverage,
         availabilityRanges: form.availabilityRanges,
         guidingDayRate: Number(form.guidingDayRate),
         drivingDayRate: Number(form.drivingDayRate),
-      });
-      showNotice("Profile saved.");
+        airportTransferRate: Number(form.airportTransferRate),
+        vehicleType: form.vehicleType,
+      }
+      await inventoryService.updateGuideProfile(guideData)
+
+      await updateProfileData({
+        profileData: {
+          languages: form.languages,
+          coverage: form.coverage,
+          guidingDayRate: Number(form.guidingDayRate),
+          drivingDayRate: Number(form.drivingDayRate),
+          airportTransferRate: Number(form.airportTransferRate),
+          vehicleType: form.vehicleType,
+        },
+      })
+
+      showNotice("Profile saved and synced.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   if (loading) {
     return <Card><div className="py-12 text-center text-sm text-gray-400">Loading profile…</div></Card>;
@@ -238,7 +262,7 @@ export default function GuideProfileEditor() {
             </Button>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Input
               id="guidingDayRate"
               label="Guiding day rate (ETB)"
@@ -257,11 +281,34 @@ export default function GuideProfileEditor() {
               error={errors.drivingDayRate}
               onChange={(e) => handleChange("drivingDayRate", e.target.value)}
             />
+            <Input
+              id="airportTransferRate"
+              label="Airport transfer (ETB)"
+              type="number"
+              min="0"
+              value={form.airportTransferRate}
+              onChange={(e) => handleChange("airportTransferRate", e.target.value)}
+            />
           </div>
+          <Input
+            id="vehicleType"
+            label="Vehicle type"
+            value={form.vehicleType}
+            placeholder="e.g. Toyota Land Cruiser"
+            onChange={(e) => handleChange("vehicleType", e.target.value)}
+          />
         </div>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={async () => { await refreshProfile(); await loadProfile(); showNotice("Profile reloaded from shared context.") }}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Sync with profile
+        </button>
         <Button onClick={handleSave} loading={saving}>
           <Save className="h-4 w-4" /> Save Profile
         </Button>
