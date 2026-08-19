@@ -67,7 +67,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       message.text,
                       message.isUser,
                     ),
-                    if (!message.isUser && proposal != null && proposal.status == 'pending')
+                    if (!message.isUser &&
+                        proposal != null &&
+                        proposal.status == 'pending')
                       _buildTripProposalCard(),
                   ],
                 );
@@ -80,9 +82,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // ============================================
+  // ============================================================
   // EMPTY STATE
-  // ============================================
+  // ============================================================
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -127,7 +130,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildQuickButton(String destination, IconData icon) {
+  Widget _buildQuickButton(
+      String destination,
+      IconData icon,
+      ) {
     return ElevatedButton.icon(
       onPressed: () {
         _sendMessage('I want to visit $destination');
@@ -137,7 +143,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary.withOpacity(0.1),
         foregroundColor: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -145,33 +154,54 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // ============================================
+  // ============================================================
   // SEND MESSAGE
-  // ============================================
+  // ============================================================
+
   void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
     final chatNotifier = ref.read(chatProvider.notifier);
 
-    // 1. Add user message
+    // 1. Add user message.
     chatNotifier.sendUserMessage(text);
 
-    // 2. Show agent activity
-    final activityId = DateTime.now().millisecondsSinceEpoch.toString();
+    // 2. Create ONE ID for the activity message.
+    //
+    // This is important because we use the same ID later
+    // when updating the activity steps.
+    final activityId =
+    DateTime.now().millisecondsSinceEpoch.toString();
+
     chatNotifier.addAIResponse(
       '🔍 Pagume is planning your trip...',
       isActivity: true,
-      steps: _agentSteps.map((step) => '⏳ $step').toList(),
+
+      // FIX:
+      // addAIResponse now accepts steps.
+      steps: _agentSteps
+          .map((step) => '⏳ $step')
+          .toList(),
+
+      // FIX:
+      // Use the same ID that updateMessage() will use.
+      id: activityId,
     );
 
-    // 3. Update steps one by one
+    // 3. Update steps one by one.
     for (int i = 0; i < _agentSteps.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(
+        const Duration(milliseconds: 500),
+      );
 
-      final updatedSteps = List<String>.from(_agentSteps);
+      final updatedSteps = List<String>.from(
+        _agentSteps,
+      );
+
       for (int j = 0; j <= i; j++) {
         updatedSteps[j] = '✅ ${updatedSteps[j]}';
       }
+
       for (int j = i + 1; j < updatedSteps.length; j++) {
         updatedSteps[j] = '⏳ ${updatedSteps[j]}';
       }
@@ -184,58 +214,79 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         isActivity: true,
         steps: updatedSteps,
       );
-      chatNotifier.updateMessage(activityId, updatedMessage);
+
+      chatNotifier.updateMessage(
+        activityId,
+        updatedMessage,
+      );
     }
 
-    // 4. Remove activity and show final response
-    await Future.delayed(const Duration(milliseconds: 300));
-    final currentMessages = chatNotifier.state.messages;
-    chatNotifier.clearMessages();
-    for (var msg in currentMessages) {
-      if (msg.id != activityId) {
-        chatNotifier.addMessage(msg);
-      }
-    }
+    // 4. Remove activity message while keeping
+    // the other messages.
+    await Future.delayed(
+      const Duration(milliseconds: 300),
+    );
 
-    // 5. Add AI response
+    final currentMessages =
+    List<ChatMessage>.from(chatNotifier.state.messages);
+
+    final remainingMessages = currentMessages
+        .where((msg) => msg.id != activityId)
+        .toList();
+
+    chatNotifier.replaceMessages(remainingMessages);
+
+    // 5. Add final AI response.
     final response = _getAIResponse(text);
-    chatNotifier.addAIResponse(response, isActivity: false);
 
-    // 6. Create proposal if it's a destination request
-    if (text.toLowerCase().contains('lalibela') ||
-        text.toLowerCase().contains('gondar') ||
-        text.toLowerCase().contains('axum') ||
-        text.toLowerCase().contains('gorgora')) {
+    chatNotifier.addAIResponse(
+      response,
+      isActivity: false,
+    );
+
+    // 6. Create proposal if it's a destination request.
+    final lowerText = text.toLowerCase();
+
+    if (lowerText.contains('lalibela') ||
+        lowerText.contains('gondar') ||
+        lowerText.contains('axum') ||
+        lowerText.contains('gorgora')) {
       _createTripProposal(text);
     }
   }
 
-  // ============================================
+  // ============================================================
   // CREATE TRIP PROPOSAL
-  // ============================================
+  // ============================================================
+
   void _createTripProposal(String userMessage) {
     final lowerMsg = userMessage.toLowerCase();
+
     String destination = 'Lalibela - 4 Day Cultural Tour';
     String duration = '4 Days';
     double price = 27000;
     String currency = 'ETB';
-    String details = 'Includes: Accommodation, Transport, Tour Guide, Activities';
+    String details =
+        'Includes: Accommodation, Transport, Tour Guide, Activities';
 
     if (lowerMsg.contains('gondar')) {
       destination = 'Gondar - 3 Day Historical Tour';
       duration = '3 Days';
       price = 18000;
-      details = 'Includes: Accommodation, Transport, Castle Tour';
+      details =
+      'Includes: Accommodation, Transport, Castle Tour';
     } else if (lowerMsg.contains('axum')) {
       destination = 'Axum - 3 Day Ancient Tour';
       duration = '3 Days';
       price = 21000;
-      details = 'Includes: Accommodation, Transport, Historical Tour, Activities';
+      details =
+      'Includes: Accommodation, Transport, Historical Tour, Activities';
     } else if (lowerMsg.contains('gorgora')) {
       destination = 'Gorgora - 4 Day Lake Escape';
       duration = '4 Days';
       price = 44000;
-      details = 'Includes: Accommodation, Transport, Boat Trip, Activities';
+      details =
+      'Includes: Accommodation, Transport, Boat Trip, Activities';
     }
 
     final proposal = TripProposal(
@@ -246,43 +297,58 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       currency: currency,
       details: details,
     );
+
     ref.read(chatProvider.notifier).setProposal(proposal);
   }
 
-  // ============================================
+  // ============================================================
   // AI RESPONSE LOGIC
-  // ============================================
+  // ============================================================
+
   String _getAIResponse(String userMessage) {
     final lowerMsg = userMessage.toLowerCase();
 
     if (lowerMsg.contains('lalibela')) {
       return _buildLalibelaResponse();
     }
-    if (lowerMsg.contains('gondar') || lowerMsg.contains('castle')) {
+
+    if (lowerMsg.contains('gondar') ||
+        lowerMsg.contains('castle')) {
       return _buildGondarResponse();
     }
-    if (lowerMsg.contains('axum') || lowerMsg.contains('stele')) {
+
+    if (lowerMsg.contains('axum') ||
+        lowerMsg.contains('stele')) {
       return _buildAxumResponse();
     }
+
     if (lowerMsg.contains('gorgora')) {
       return _buildGorgoraResponse();
     }
-    if (lowerMsg.contains('budget') || lowerMsg.contains('money')) {
+
+    if (lowerMsg.contains('budget') ||
+        lowerMsg.contains('money')) {
       return _buildBudgetResponse();
     }
-    if (lowerMsg.contains('hotel') || lowerMsg.contains('stay') || lowerMsg.contains('accommodation')) {
+
+    if (lowerMsg.contains('hotel') ||
+        lowerMsg.contains('stay') ||
+        lowerMsg.contains('accommodation')) {
       return _buildAccommodationResponse();
     }
-    if (lowerMsg.contains('hello') || lowerMsg.contains('hi') || lowerMsg.contains('hey')) {
+
+    if (lowerMsg.contains('hello') ||
+        lowerMsg.contains('hi') ||
+        lowerMsg.contains('hey')) {
       return _buildGreetingResponse();
     }
 
     return _buildDefaultResponse();
   }
 
-  // ============================================
+  // ============================================================
   // RESPONSE BUILDERS
-  // ============================================
+  // ============================================================
 
   String _buildLalibelaResponse() {
     return '''
@@ -388,7 +454,8 @@ I'm your AI Travel Assistant. I can help you:
 • 🚗 Arrange transportation
 • 💰 Manage your budget
 
-Try saying: *"I want to visit Lalibela for 4 days with a budget of 40,000 ETB"*
+Try saying:
+*"I want to visit Lalibela for 4 days with a budget of 40,000 ETB"*
 
 Ready to start your journey? ✈️
 ''';
@@ -409,18 +476,22 @@ What would you like to know? 🗺️
 ''';
   }
 
-  // ============================================
-  // ACTIVITY WIDGET (FRS Section 36)
-  // ============================================
+  // ============================================================
+  // ACTIVITY WIDGET
+  // ============================================================
+
   Widget _buildActivityWidget(ChatMessage message) {
     final steps = message.steps ?? [];
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.primary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,12 +506,16 @@ What would you like to know? 🗺️
           const SizedBox(height: 8),
           ...steps.map(
                 (step) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(
+                vertical: 2,
+              ),
               child: Text(
                 step,
                 style: TextStyle(
                   fontSize: 13,
-                  color: step.startsWith('✅') ? Colors.green : Colors.grey,
+                  color: step.startsWith('✅')
+                      ? Colors.green
+                      : Colors.grey,
                 ),
               ),
             ),
@@ -450,32 +525,54 @@ What would you like to know? 🗺️
     );
   }
 
-  // ============================================
+  // ============================================================
   // MESSAGE BUBBLE
-  // ============================================
-  Widget _buildMessageBubble(String text, bool isUser) {
+  // ============================================================
+
+  Widget _buildMessageBubble(
+      String text,
+      bool isUser,
+      ) {
     return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isUser
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         decoration: BoxDecoration(
-          color: isUser ? AppColors.primary : Colors.white,
+          color: isUser
+              ? AppColors.primary
+              : Colors.white,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
-            bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
-            bottomRight: isUser ? Radius.zero : const Radius.circular(16),
+            bottomLeft: isUser
+                ? const Radius.circular(16)
+                : Radius.zero,
+            bottomRight: isUser
+                ? Radius.zero
+                : const Radius.circular(16),
           ),
-          border: isUser ? null : Border.all(color: AppColors.grey200),
+          border: isUser
+              ? null
+              : Border.all(
+            color: AppColors.grey200,
+          ),
         ),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+          maxWidth:
+          MediaQuery.of(context).size.width * 0.75,
         ),
         child: Text(
           text,
           style: TextStyle(
-            color: isUser ? Colors.white : Colors.black87,
+            color: isUser
+                ? Colors.white
+                : Colors.black87,
             height: 1.5,
           ),
         ),
@@ -483,9 +580,10 @@ What would you like to know? 🗺️
     );
   }
 
-  // ============================================
+  // ============================================================
   // INPUT FIELD
-  // ============================================
+  // ============================================================
+
   Widget _buildInputField(bool isProcessing) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -506,14 +604,17 @@ What would you like to know? 🗺️
               controller: _controller,
               enabled: !isProcessing,
               decoration: InputDecoration(
-                hintText: isProcessing ? 'Processing...' : 'Ask me about Ethiopia...',
+                hintText: isProcessing
+                    ? 'Processing...'
+                    : 'Ask me about Ethiopia...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
                 fillColor: AppColors.grey100,
-                contentPadding: const EdgeInsets.symmetric(
+                contentPadding:
+                const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
@@ -526,17 +627,24 @@ What would you like to know? 🗺️
           ),
           const SizedBox(width: 8),
           CircleAvatar(
-            backgroundColor: isProcessing ? AppColors.grey500 : AppColors.primary,
+            backgroundColor: isProcessing
+                ? AppColors.grey500
+                : AppColors.primary,
             child: IconButton(
               icon: Icon(
-                isProcessing ? Icons.hourglass_empty : Icons.send,
+                isProcessing
+                    ? Icons.hourglass_empty
+                    : Icons.send,
                 color: Colors.white,
               ),
               onPressed: isProcessing
                   ? null
                   : () {
-                if (_controller.text.isNotEmpty) {
-                  _sendMessage(_controller.text);
+                if (_controller.text
+                    .isNotEmpty) {
+                  _sendMessage(
+                    _controller.text,
+                  );
                   _controller.clear();
                 }
               },
@@ -547,23 +655,32 @@ What would you like to know? 🗺️
     );
   }
 
-  // ============================================
-  // TRIP PROPOSAL CARD (FRS Sections 9, 32)
-  // ============================================
-  Widget _buildTripProposalCard() {
-    final proposal = ref.watch(chatProvider).currentProposal;
+  // ============================================================
+  // TRIP PROPOSAL CARD
+  // ============================================================
 
-    if (proposal == null || proposal.status != 'pending') {
+  Widget _buildTripProposalCard() {
+    final proposal =
+        ref.watch(chatProvider).currentProposal;
+
+    if (proposal == null ||
+        proposal.status != 'pending') {
       return const SizedBox.shrink();
     }
 
     return Container(
-      margin: const EdgeInsets.only(top: 8, bottom: 12),
+      margin: const EdgeInsets.only(
+        top: 8,
+        bottom: 12,
+      ),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+        border: Border.all(
+          color:
+          AppColors.primary.withOpacity(0.3),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -572,22 +689,30 @@ What would you like to know? 🗺️
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
+                  color:
+                  AppColors.accent.withOpacity(0.2),
+                  borderRadius:
+                  BorderRadius.circular(4),
                 ),
                 child: Text(
                   proposal.duration,
                   style: TextStyle(
                     color: AppColors.accentDark,
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight:
+                    FontWeight.w600,
                   ),
                 ),
               ),
@@ -624,16 +749,24 @@ What would you like to know? 🗺️
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {
-                    ref.read(chatProvider.notifier).declineProposal();
+                    ref
+                        .read(chatProvider.notifier)
+                        .declineProposal();
                   },
-                  style: OutlinedButton.styleFrom(
+                  style:
+                  OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(
+                      color: Colors.red,
+                    ),
+                    shape:
+                    RoundedRectangleBorder(
+                      borderRadius:
+                      BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Decline ❌'),
+                  child:
+                  const Text('Decline ❌'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -642,20 +775,26 @@ What would you like to know? 🗺️
                   onPressed: () {
                     _showBookingConfirmationDialog();
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                  style:
+                  ElevatedButton.styleFrom(
+                    backgroundColor:
+                    AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    shape:
+                    RoundedRectangleBorder(
+                      borderRadius:
+                      BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Book Now ✅'),
+                  child:
+                  const Text('Book Now ✅'),
                 ),
               ),
             ],
           ),
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding:
+            const EdgeInsets.only(top: 8),
             child: Text(
               '🔒 You will be asked to confirm this booking before payment is processed.',
               style: TextStyle(
@@ -670,11 +809,14 @@ What would you like to know? 🗺️
     );
   }
 
-  // ============================================
-  // BOOKING CONFIRMATION DIALOG (FRS Section 32)
-  // ============================================
+  // ============================================================
+  // BOOKING CONFIRMATION DIALOG
+  // ============================================================
+
   void _showBookingConfirmationDialog() {
-    final proposal = ref.read(chatProvider).currentProposal;
+    final proposal =
+        ref.read(chatProvider).currentProposal;
+
     if (proposal == null) return;
 
     showDialog(
@@ -684,12 +826,21 @@ What would you like to know? 🗺️
         title: const Text('Confirm Booking'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+          CrossAxisAlignment.start,
           children: [
-            const Text('Please confirm your booking details:'),
+            const Text(
+              'Please confirm your booking details:',
+            ),
             const SizedBox(height: 12),
-            _buildConfirmationRow('Destination', proposal.destination),
-            _buildConfirmationRow('Duration', proposal.duration),
+            _buildConfirmationRow(
+              'Destination',
+              proposal.destination,
+            ),
+            _buildConfirmationRow(
+              'Duration',
+              proposal.duration,
+            ),
             _buildConfirmationRow(
               'Total',
               '${proposal.price} ${proposal.currency}',
@@ -715,40 +866,64 @@ What would you like to know? 🗺️
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ref.read(chatProvider.notifier).acceptProposal();
+              ref
+                  .read(chatProvider.notifier)
+                  .acceptProposal();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor:
+              AppColors.primary,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Confirm & Book ✅'),
+            child:
+            const Text('Confirm & Book ✅'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildConfirmationRow(String label, String value, {bool isBold = false}) {
+  Widget _buildConfirmationRow(
+      String label,
+      String value, {
+        bool isBold = false,
+      }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding:
+      const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment:
+        MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontWeight: isBold
+                  ? FontWeight.bold
+                  : FontWeight.normal,
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              color: isBold ? AppColors.primary : null,
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontWeight: isBold
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+                color:
+                isBold ? AppColors.primary : null,
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }
