@@ -16,7 +16,7 @@ from pagume_agents.config import Settings, get_settings
 from pagume_agents.destination.node import make_destination_node
 from pagume_agents.itinerary.node import make_itinerary_node
 from pagume_agents.llm import get_chat_model
-from pagume_agents.respond.node import respond_node
+from pagume_agents.respond.node import make_respond_node
 from pagume_agents.state import TripState
 from pagume_agents.supervisor.node import make_supervisor_node, route_from_supervisor
 from pagume_agents.tour.node import make_tour_node
@@ -43,7 +43,7 @@ def build_graph(
     graph.add_node("budget", budget_node)
     graph.add_node("itinerary", make_itinerary_node(client, **kwargs))
     graph.add_node("booking", make_booking_node(client))
-    graph.add_node("respond", respond_node)
+    graph.add_node("respond", make_respond_node(llm=llm if use_llm else None))
 
     graph.add_edge(START, "supervisor")
     graph.add_conditional_edges(

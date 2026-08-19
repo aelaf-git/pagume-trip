@@ -14,12 +14,14 @@ from pagume_agents.clients import get_inventory_client
 from pagume_agents.config import get_settings
 from pagume_agents.graph import compile_app
 from pagume_agents.observability import RunEventLog
+from pagume_agents.shared.conversation import public_messages
 
 
 class RunRequest(BaseModel):
     thread_id: str
     message: str
     user_id: str | None = None
+    reset: bool = False
 
 
 class MessageRequest(BaseModel):
@@ -34,6 +36,7 @@ class ApproveRequest(BaseModel):
 class AgentRunResponse(BaseModel):
     thread_id: str
     message: str | None = None
+    messages: list[dict[str, str]] = Field(default_factory=list)
     progress: list[dict[str, Any]] = Field(default_factory=list)
     options: list[dict[str, Any]] = Field(default_factory=list)
     selected_option: dict[str, Any] | None = None
@@ -70,6 +73,7 @@ def _state_to_response(graph, config: dict, thread_id: str) -> AgentRunResponse:
     return AgentRunResponse(
         thread_id=thread_id,
         message=values.get("final_message"),
+        messages=public_messages(values.get("messages")),
         progress=values.get("progress") or [],
         options=values.get("proposed_options") or [],
         selected_option=values.get("selected_option"),
@@ -93,6 +97,14 @@ def _initial_state(message: str, user_id: str | None = None) -> dict[str, Any]:
     }
 
 
+def _reset_thread(graph, thread_id: str) -> None:
+    """Drop checkpointed state so POST /v1/runs starts a new conversation."""
+    checkpointer = getattr(graph, "checkpointer", None)
+    if checkpointer is not None and hasattr(checkpointer, "delete_thread"):
+        checkpointer.delete_thread(thread_id)
+    event_log.clear(thread_id)
+
+
 def create_app(graph=None) -> FastAPI:
     settings = get_settings()
     compiled = graph or compile_app(settings, client=get_inventory_client(settings))
@@ -113,7 +125,19 @@ def create_app(graph=None) -> FastAPI:
     @app.post("/v1/runs", response_model=AgentRunResponse)
     def start_run(body: RunRequest) -> AgentRunResponse:
         config = {"configurable": {"thread_id": body.thread_id}, "recursion_limit": 40}
-        app.state.graph.invoke(_initial_state(body.message, body.user_id), config)
+        snapshot = app.state.graph.get_state(config)
+        has_thread = bool(snapshot and snapshot.values)
+        if body.reset or not has_thread:
+            _reset_thread(app.state.graph, body.thread_id)
+            app.state.graph.invoke(_initial_state(body.message, body.user_id), config)
+        else:
+            app.state.graph.invoke(
+                {
+                    "messages": [HumanMessage(content=body.message)],
+                    "user_message": body.message,
+                },
+                config,
+            )
         return _state_to_response(app.state.graph, config, body.thread_id)
 
     @app.post("/v1/runs/{thread_id}/messages", response_model=AgentRunResponse)
@@ -129,6 +153,14 @@ def create_app(graph=None) -> FastAPI:
             },
             config,
         )
+        return _state_to_response(app.state.graph, config, thread_id)
+
+    @app.get("/v1/runs/{thread_id}", response_model=AgentRunResponse)
+    def get_run(thread_id: str) -> AgentRunResponse:
+        config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 40}
+        snapshot = app.state.graph.get_state(config)
+        if not snapshot or not snapshot.values:
+            raise HTTPException(status_code=404, detail="Unknown thread_id")
         return _state_to_response(app.state.graph, config, thread_id)
 
     @app.post("/v1/runs/{thread_id}/approve", response_model=AgentRunResponse)

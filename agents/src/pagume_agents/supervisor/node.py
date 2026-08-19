@@ -4,13 +4,24 @@ from typing import Any, Callable
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from pagume_agents.extract import extract_trip_context, wants_booking
+from pagume_agents.extract import extract_trip_context, is_trip_intent, wants_booking
 from pagume_agents.models.agent import SupervisorDecision, SupervisorParams
 from pagume_agents.models.trip import TripContext
 from pagume_agents.observability import make_event
+from pagume_agents.shared.conversation import format_transcript
 from pagume_agents.shared.results import summarize_inventory
 from pagume_agents.state import TripState
 from pagume_agents.supervisor.prompt import SUPERVISOR_SYSTEM
+
+_DOWNSTREAM = {
+    "accommodation",
+    "transport",
+    "car_rental",
+    "tour",
+    "budget",
+    "itinerary",
+    "booking",
+}
 
 
 def _latest_user_text(state: TripState) -> str:
@@ -24,13 +35,47 @@ def _latest_user_text(state: TripState) -> str:
     return ""
 
 
+def stale_specialist_keys(
+    existing: TripContext | None,
+    context: TripContext,
+    results: dict[str, Any],
+) -> set[str]:
+    """Specialist results that no longer match the updated session context."""
+    stale: set[str] = set()
+    dest = results.get("destination")
+    dest_changed = False
+    if dest and context.destination_query and not context.browse_destinations:
+        if context.destination_id and context.destination_name:
+            query = context.destination_query.lower()
+            name = context.destination_name.lower()
+            if query not in name and name not in query:
+                dest_changed = True
+        elif existing and existing.browse_destinations and not context.browse_destinations:
+            dest_changed = True
+    if dest_changed:
+        stale.add("destination")
+        stale.update(key for key in _DOWNSTREAM if key in results)
+
+    if existing and context.destination_id:
+        planning_changed = (
+            context.guests != existing.guests
+            or context.budget_etb != existing.budget_etb
+            or context.check_in != existing.check_in
+            or context.check_out != existing.check_out
+            or context.duration_days != existing.duration_days
+        )
+        if planning_changed:
+            stale.update(key for key in _DOWNSTREAM if key in results)
+    return stale
+
+
 def _supervisor_user_payload(
     text: str,
     context: TripContext,
     results: dict[str, Any],
-    proposed: SupervisorDecision,
+    conversation: str = "",
 ) -> str:
-    """Compact briefing for Groq — flags and names, not full inventory blobs."""
+    """Compact briefing for Groq — flags and names, not a prescribed hop."""
     specialists: list[str] = []
     for name, payload in (results or {}).items():
         status = (payload or {}).get("status") or "unknown"
@@ -45,30 +90,43 @@ def _supervisor_user_payload(
         specialists.append(line)
     specialist_block = "\n".join(specialists) if specialists else "- none yet"
     return (
-        f"User message: {text}\n"
+        f"Conversation so far:\n{conversation or '(no prior turns)'}\n"
+        f"Latest user message: {text}\n"
         f"browse_destinations: {context.browse_destinations}\n"
         f"destination_id: {context.destination_id}\n"
         f"destination_name: {context.destination_name}\n"
         f"destination_query: {context.destination_query}\n"
         f"guests: {context.guests}\n"
         f"budget_etb: {context.budget_etb}\n"
+        f"duration_days: {context.duration_days}\n"
         f"wants_hotel: {context.wants_hotel}\n"
         f"wants_transport: {context.wants_transport}\n"
         f"wants_car_rental: {context.wants_car_rental}\n"
         f"wants_tour: {context.wants_tour}\n"
         f"Specialists already run:\n{specialist_block}\n"
-        f"Proposed pipeline: {proposed.model_dump_json()}\n"
-        "Return one SupervisorDecision. Prefer the proposed pipeline unless user intent clearly differs."
+        "Return one SupervisorDecision for the single next hop. "
+        "Run only agents needed to answer this message. Respond when you can answer."
     )
 
 
-def pipeline_decision(state: TripState) -> SupervisorDecision:
+def _has_pricable_inventory(results: dict[str, Any]) -> bool:
+    for key in ("accommodation", "transport", "car_rental", "tour"):
+        if (results.get(key) or {}).get("results"):
+            return True
+    return False
+
+
+def fallback_decision(state: TripState) -> SupervisorDecision:
+    """Intent-based hop when Groq is off or the LLM call fails. Not a fixed ladder."""
     ctx = TripContext.model_validate(state.get("trip_context") or {})
     results = state.get("agent_results") or {}
     text = _latest_user_text(state)
 
     if wants_booking(text) and results.get("itinerary") and not results.get("booking"):
         return SupervisorDecision(next_agent="booking", task="confirm")
+
+    if not is_trip_intent(text, ctx):
+        return SupervisorDecision(next_agent="respond", task="present")
 
     if not results.get("destination"):
         query = "" if ctx.browse_destinations else (ctx.destination_query or text)
@@ -112,42 +170,46 @@ def pipeline_decision(state: TripState) -> SupervisorDecision:
                 guests=ctx.guests,
             ),
         )
-    if not results.get("budget"):
+    if _has_pricable_inventory(results) and (ctx.budget_etb is not None or ctx.duration_days) and not results.get("budget"):
         return SupervisorDecision(next_agent="budget", task="calculate")
-    if not results.get("itinerary"):
+    if ctx.duration_days and results.get("budget") and not results.get("itinerary"):
         return SupervisorDecision(next_agent="itinerary", task="build")
     return SupervisorDecision(next_agent="respond", task="present")
+
+
+pipeline_decision = fallback_decision
 
 
 def _apply_supervisor_guardrails(
     decision: SupervisorDecision, state: TripState
 ) -> SupervisorDecision:
-    """Keep LLM routing from re-dispatching completed work or looping."""
-    pipeline = pipeline_decision(state)
+    """Block unsafe or looping hops. Do not force unused specialists."""
     results = state.get("agent_results") or {}
     ctx = TripContext.model_validate(state.get("trip_context") or {})
+    text = _latest_user_text(state)
 
-    if pipeline.next_agent == "respond" and decision.next_agent == "destination":
-        return pipeline
-
-    if results.get("destination") and not ctx.destination_id:
+    if not is_trip_intent(text, ctx):
         return SupervisorDecision(next_agent="respond", task="present")
 
-    if decision.next_agent == "destination" and results.get("destination"):
-        return pipeline
+    if decision.next_agent == "respond":
+        return decision
 
-    if not ctx.destination_id and decision.next_agent in {
+    if results.get("destination") and not ctx.destination_id and decision.next_agent == "destination":
+        return SupervisorDecision(next_agent="respond", task="present")
+
+    needs_place = {
         "accommodation",
         "transport",
         "car_rental",
         "tour",
         "budget",
         "itinerary",
-    }:
-        return pipeline
+    }
+    if not ctx.destination_id and decision.next_agent in needs_place:
+        return fallback_decision(state)
 
     if decision.next_agent in results and decision.next_agent not in {"respond", "booking"}:
-        return pipeline
+        return fallback_decision(state)
 
     return decision
 
@@ -163,9 +225,32 @@ def make_supervisor_node(llm: Any | None = None, use_llm: bool = False) -> Calla
         if state.get("trip_context"):
             existing = TripContext.model_validate(state["trip_context"])
         context = extract_trip_context(text, existing)
-        merged = {**state, "trip_context": context.model_dump()}
+        raw_results = state.get("agent_results") or {}
+        stale = stale_specialist_keys(existing, context, raw_results)
+        live_results = {key: value for key, value in raw_results.items() if key not in stale}
+        conversation = format_transcript(state.get("messages"))
+        merged = {
+            **state,
+            "trip_context": context.model_dump(),
+            "agent_results": live_results,
+        }
 
-        decision = pipeline_decision(merged)
+        def _update(decision: SupervisorDecision, **extra: Any) -> dict[str, Any]:
+            payload: dict[str, Any] = {
+                "trip_context": context.model_dump(),
+                "current_task": decision.model_dump(),
+                "next_agent": decision.next_agent,
+                "events": extra.pop("events"),
+            }
+            if stale:
+                payload["agent_results"] = {key: None for key in stale}
+                payload["selected_option"] = None
+                payload["proposed_options"] = []
+                payload["itinerary"] = []
+            payload.update(extra)
+            return payload
+
+        decision = fallback_decision(merged)
         if structured is not None:
             try:
                 llm_decision = structured.invoke(
@@ -175,27 +260,25 @@ def make_supervisor_node(llm: Any | None = None, use_llm: bool = False) -> Calla
                             content=_supervisor_user_payload(
                                 text,
                                 context,
-                                state.get("agent_results") or {},
-                                decision,
+                                live_results,
+                                conversation=conversation,
                             )
                         ),
                     ]
                 )
                 if isinstance(llm_decision, SupervisorDecision):
                     decision = _apply_supervisor_guardrails(llm_decision, merged)
-            except Exception as exc:  # noqa: BLE001 — fall back to pipeline
-                decision = pipeline_decision(merged)
-                return {
-                    "trip_context": context.model_dump(),
-                    "current_task": decision.model_dump(),
-                    "next_agent": decision.next_agent,
-                    "errors": [
+            except Exception as exc:  # noqa: BLE001 — fall back to intent heuristic
+                decision = fallback_decision(merged)
+                return _update(
+                    decision,
+                    errors=[
                         {
                             "agent": "supervisor",
-                            "message": f"LLM supervisor failed; using pipeline. {exc}",
+                            "message": f"LLM supervisor failed; using fallback. {exc}",
                         }
                     ],
-                    "events": [
+                    events=[
                         make_event(
                             agent="supervisor",
                             task=decision.task,
@@ -203,13 +286,11 @@ def make_supervisor_node(llm: Any | None = None, use_llm: bool = False) -> Calla
                             error=str(exc),
                         )
                     ],
-                }
+                )
 
-        return {
-            "trip_context": context.model_dump(),
-            "current_task": decision.model_dump(),
-            "next_agent": decision.next_agent,
-            "events": [
+        return _update(
+            decision,
+            events=[
                 make_event(
                     agent="supervisor",
                     task=decision.task,
@@ -220,7 +301,7 @@ def make_supervisor_node(llm: Any | None = None, use_llm: bool = False) -> Calla
                     },
                 )
             ],
-        }
+        )
 
     return supervisor_node
 

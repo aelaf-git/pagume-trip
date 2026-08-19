@@ -51,8 +51,12 @@ def extract_trip_context(text: str, existing: TripContext | None = None) -> Trip
     for alias, canonical in KNOWN_DESTINATIONS:
         if alias in lowered:
             ctx.destination_query = canonical
+            leaving_browse = ctx.browse_destinations
             ctx.browse_destinations = False
             matched_city = True
+            if leaving_browse:
+                ctx.wants_hotel = True
+                ctx.wants_transport = True
             break
 
     if not matched_city and ("ethiopia" in lowered or "ethiopian" in lowered):
@@ -101,7 +105,22 @@ def extract_trip_context(text: str, existing: TripContext | None = None) -> Trip
     if "comfortable" in lowered:
         ctx.preferences = list({*ctx.preferences, "comfortable"})
 
+    if matched_city and _is_full_plan_request(lowered):
+        ctx.wants_hotel = True
+        ctx.wants_transport = True
+
     return ctx
+
+
+def _is_full_plan_request(lowered: str) -> bool:
+    """Named-city messages that ask for a package, not a single specialist."""
+    if re.search(r"\b(plan|planning)\b", lowered) and re.search(r"\b(trip|days?)\b", lowered):
+        return True
+    if re.search(r"\bvisit\b", lowered) and re.search(r"\b\d+\s*-?\s*days?\b", lowered):
+        return True
+    if re.search(r"\b(for|in)\s+(\d+|one|two|three|four|five|six|seven)\s*-?\s*days?\b", lowered):
+        return True
+    return False
 
 
 def wants_booking(text: str) -> bool:
@@ -110,3 +129,42 @@ def wants_booking(text: str) -> bool:
         phrase in lowered
         for phrase in ("book trip", "book it", "confirm booking", "yes, book", "please book")
     )
+
+
+TRIP_KEYWORDS = (
+    "trip",
+    "travel",
+    "itinerary",
+    "visit",
+    "hotel",
+    "resort",
+    "lodge",
+    "tour",
+    "ethiopia",
+    "ethiopian",
+    "etb",
+    "birr",
+    "days",
+    "recommend",
+    "book",
+    "plan",
+    "destination",
+    "guesthouse",
+    "guest house",
+    "car rental",
+    "flight",
+)
+
+
+def is_trip_intent(text: str, ctx: TripContext | None = None) -> bool:
+    """True when the user is asking to plan or browse a trip, not ordinary chat."""
+    if wants_booking(text):
+        return True
+    if ctx is not None and (
+        ctx.destination_id or ctx.destination_query or ctx.browse_destinations
+    ):
+        return True
+    lowered = text.lower()
+    if any(alias in lowered for alias, _ in KNOWN_DESTINATIONS):
+        return True
+    return any(keyword in lowered for keyword in TRIP_KEYWORDS)

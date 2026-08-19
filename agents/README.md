@@ -49,8 +49,9 @@ uvicorn pagume_agents.api.app:app --reload --app-dir src --port 8100
 
 ## API
 
-- `POST /v1/runs` — start a conversation (`thread_id`, `message`)
-- `POST /v1/runs/{thread_id}/messages` — continue
+- `POST /v1/runs` — send a message on a `thread_id`. The first call creates the session. Reuse the same `thread_id` to continue (Postman: keep `thread_id`, change `message`). Pass `"reset": true` (or a new `thread_id`) to start over.
+- `POST /v1/runs/{thread_id}/messages` — continue the same session
+- `GET /v1/runs/{thread_id}` — restore session state and chat history
 - `POST /v1/runs/{thread_id}/approve` — resume after booking interrupt
 - `GET /v1/runs/{thread_id}/events` — SSE progress stream
 - `GET /health` — liveness

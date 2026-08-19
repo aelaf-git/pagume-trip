@@ -4,12 +4,14 @@ from pagume_agents.supervisor.node import _supervisor_user_payload
 from pagume_agents.supervisor.prompt import SUPERVISOR_SYSTEM
 
 
-def test_prompt_contains_anti_loop_policy():
+def test_prompt_says_supervisor_chooses_order():
     lowered = SUPERVISOR_SYSTEM.lower()
-    assert "already" in lowered
+    assert "no required sequence" in lowered or "there is no required sequence" in lowered
+    assert "prefer the proposed pipeline" not in lowered
     assert "destination_id" in lowered
     assert "respond" in lowered
-    assert "never override proposed respond" in lowered
+    assert "greeting" in lowered or "ordinary chat" in lowered
+    assert "already" in lowered
 
 
 def test_supervisor_user_payload_includes_browse_and_names():
@@ -19,7 +21,6 @@ def test_supervisor_user_payload_includes_browse_and_names():
         wants_hotel=False,
         wants_transport=False,
     )
-    proposed = SupervisorDecision(next_agent="respond", task="present")
     payload = _supervisor_user_payload(
         "I want to visit Ethiopia. Recommend places.",
         context,
@@ -32,12 +33,13 @@ def test_supervisor_user_payload_includes_browse_and_names():
                 ],
             }
         },
-        proposed,
     )
+    assert "Conversation so far:" in payload
+    assert "Latest user message:" in payload
     assert "browse_destinations: True" in payload
     assert "Gorgora" in payload
     assert "Lalibela" in payload
-    assert '"next_agent":"respond"' in payload or '"next_agent": "respond"' in payload
+    assert "Proposed pipeline" not in payload
     assert "Hotel ABC" not in payload
     assert "Dubai" not in payload
     assert "Agent results keys" not in payload

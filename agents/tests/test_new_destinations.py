@@ -29,6 +29,7 @@ def test_lalibela_guest_house_in_inventory(graph):
     names = {row["name"] for row in hotels}
     assert "Lalibela Guest House" in names or "Lalibela Mountain View Hotel" in names
     assert all("Hotel ABC" != row.get("name") for row in hotels)
+    assert "transport" not in values["agent_results"]
 
 
 def test_ethiopia_recommend_lists_seeded_places(graph):

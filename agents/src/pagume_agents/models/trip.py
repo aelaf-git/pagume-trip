@@ -21,8 +21,8 @@ class TripContext(BaseModel):
     guests: int | None = None
     budget_etb: float | None = None
     preferences: list[str] = Field(default_factory=list)
-    wants_hotel: bool = True
-    wants_transport: bool = True
+    wants_hotel: bool = False
+    wants_transport: bool = False
     wants_tour: bool = False
     wants_car_rental: bool = False
     tour_query: str | None = None

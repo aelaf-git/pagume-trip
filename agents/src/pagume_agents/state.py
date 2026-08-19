@@ -6,7 +6,9 @@ from langgraph.graph.message import add_messages
 
 
 def merge_dicts(left: dict[str, Any] | None, right: dict[str, Any] | None) -> dict[str, Any]:
-    return {**(left or {}), **(right or {})}
+    """Shallow-merge maps. A right-hand `None` value deletes the key (stale specialist results)."""
+    merged = {**(left or {}), **(right or {})}
+    return {key: value for key, value in merged.items() if value is not None}
 
 
 def add_lists(left: list | None, right: list | None) -> list:

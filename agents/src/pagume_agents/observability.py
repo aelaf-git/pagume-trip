@@ -44,3 +44,6 @@ class RunEventLog:
 
     def extend(self, thread_id: str, events: list[dict[str, Any]]) -> None:
         self._runs.setdefault(thread_id, []).extend(events)
+
+    def clear(self, thread_id: str) -> None:
+        self._runs.pop(thread_id, None)
