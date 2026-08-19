@@ -20,6 +20,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _login() async {
+    // Validate fields
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
@@ -30,10 +31,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Simulate API call
       await Future.delayed(const Duration(seconds: 2));
 
-      // ✅ Save user data to secure storage via Riverpod
       final userNotifier = ref.read(userProvider.notifier);
       await userNotifier.login(
         token: 'demo_token_${DateTime.now().millisecondsSinceEpoch}',

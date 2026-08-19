@@ -24,6 +24,10 @@ class PagumeTripApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch for auth state changes
+    final authState = ref.watch(userProvider);
+    final isAuthenticated = authState.isAuthenticated;
+
     return MaterialApp.router(
       title: 'Pagume Trip',
       theme: ThemeData(
@@ -44,6 +48,7 @@ class PagumeTripApp extends ConsumerWidget {
   }
 }
 
+// MainScreen with Bottom Navigation
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key, required this.child});
   final Widget child;
@@ -101,11 +106,12 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// ✅ GoRouter Configuration with Auth Redirect
+// GoRouter Configuration with Auth Redirect
 final GoRouter _router = GoRouter(
   initialLocation: '/',
+  // This runs before every navigation to check auth
   redirect: (context, state) {
-    // ✅ Check auth status
+    // Get auth state from Riverpod
     final authState = ProviderScope.containerOf(context).read(userProvider);
     final isAuthenticated = authState.isAuthenticated;
     final isOnAuthScreen = state.matchedLocation == '/login' ||
@@ -116,28 +122,38 @@ final GoRouter _router = GoRouter(
     if (!isAuthenticated && !isOnAuthScreen) {
       return '/login';
     }
+
     // If authenticated and on auth screen → go to home
     if (isAuthenticated && isOnAuthScreen) {
       return '/home';
     }
+
+    // Otherwise, stay where we are
     return null;
   },
   routes: [
+    // Splash Screen
     GoRoute(
       path: '/',
       name: 'splash',
       builder: (context, state) => const SplashScreen(),
     ),
+
+    // Login Screen
     GoRoute(
       path: '/login',
       name: 'login',
       builder: (context, state) => const LoginScreen(),
     ),
+
+    // Sign-up Screen
     GoRoute(
       path: '/signup',
       name: 'signup',
       builder: (context, state) => const SignupScreen(),
     ),
+
+    // ShellRoute for screens WITH bottom navigation
     ShellRoute(
       builder: (context, state, child) {
         return MainScreen(child: child);
