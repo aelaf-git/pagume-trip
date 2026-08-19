@@ -11,6 +11,7 @@ class CustomTextField extends StatelessWidget {
   final void Function(String)? onChanged;
   final TextInputType? keyboardType;
   final int? maxLines;
+  final VoidCallback? onSuffixIconTap;
 
   const CustomTextField({
     super.key,
@@ -24,6 +25,7 @@ class CustomTextField extends StatelessWidget {
     this.onChanged,
     this.keyboardType,
     this.maxLines = 1,
+    this.onSuffixIconTap,
   });
 
   @override
@@ -39,7 +41,12 @@ class CustomTextField extends StatelessWidget {
         hintText: hintText,
         labelText: labelText,
         prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
-        suffixIcon: suffixIcon != null ? Icon(suffixIcon) : null,
+        suffixIcon: suffixIcon != null
+            ? IconButton(
+          icon: Icon(suffixIcon),
+          onPressed: onSuffixIconTap,
+        )
+            : null,
       ),
     );
   }

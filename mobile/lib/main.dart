@@ -24,7 +24,7 @@ class PagumeTripApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ✅ Watch for auth state changes
+    // Watch for auth state changes
     final authState = ref.watch(userProvider);
     final isAuthenticated = authState.isAuthenticated;
 
@@ -48,7 +48,7 @@ class PagumeTripApp extends ConsumerWidget {
   }
 }
 
-// ✅ MainScreen with Bottom Navigation
+// MainScreen with Bottom Navigation
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key, required this.child});
   final Widget child;
@@ -106,10 +106,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// ✅ GoRouter Configuration with Auth Redirect
+// GoRouter Configuration with Auth Redirect
 final GoRouter _router = GoRouter(
   initialLocation: '/',
-  // ✅ This runs before every navigation to check auth
+  // This runs before every navigation to check auth
   redirect: (context, state) {
     // Get auth state from Riverpod
     final authState = ProviderScope.containerOf(context).read(userProvider);
