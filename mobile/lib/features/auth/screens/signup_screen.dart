@@ -45,10 +45,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Simulate API call
       await Future.delayed(const Duration(seconds: 2));
 
-      // ✅ Save user data to secure storage via Riverpod
       final userNotifier = ref.read(userProvider.notifier);
       await userNotifier.login(
         token: 'demo_token_${DateTime.now().millisecondsSinceEpoch}',
