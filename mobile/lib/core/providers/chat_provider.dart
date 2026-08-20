@@ -7,6 +7,35 @@ final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   return ChatNotifier();
 });
 
+// --- THREAD MODEL ---
+class ChatThread {
+  final String id;
+  final String title;
+  final List<ChatMessage> messages;
+  final TripProposal? currentProposal;
+
+  ChatThread({
+    required this.id,
+    required this.title,
+    required this.messages,
+    this.currentProposal,
+  });
+
+  ChatThread copyWith({
+    String? id,
+    String? title,
+    List<ChatMessage>? messages,
+    TripProposal? currentProposal,
+  }) {
+    return ChatThread(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      messages: messages ?? this.messages,
+      currentProposal: currentProposal ?? this.currentProposal,
+    );
+  }
+}
+
 // --- STATE CLASS ---
 class ChatState {
   final List<ChatMessage> messages;
@@ -16,6 +45,7 @@ class ChatState {
   final String? error;
   final TripProposal? currentProposal;
   final String? threadId;
+  final List<ChatThread> threads;
 
   ChatState({
     this.messages = const [],
@@ -25,6 +55,7 @@ class ChatState {
     this.error,
     this.currentProposal,
     this.threadId,
+    this.threads = const [],
   });
 
   ChatState copyWith({
@@ -35,6 +66,7 @@ class ChatState {
     String? error,
     TripProposal? currentProposal,
     String? threadId,
+    List<ChatThread>? threads,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -44,6 +76,7 @@ class ChatState {
       error: error ?? this.error,
       currentProposal: currentProposal ?? this.currentProposal,
       threadId: threadId ?? this.threadId,
+      threads: threads ?? this.threads,
     );
   }
 }
@@ -69,7 +102,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   void _initThread() {
     final newThreadId = 'thread_${DateTime.now().millisecondsSinceEpoch}';
-    state = state.copyWith(threadId: newThreadId);
+    final initialThread = ChatThread(
+      id: newThreadId,
+      title: 'New Chat',
+      messages: [],
+    );
+    state = state.copyWith(
+      threadId: newThreadId,
+      threads: [initialThread],
+    );
   }
 
   // --- MESSAGE METHODS ---
@@ -102,13 +143,39 @@ class ChatNotifier extends StateNotifier<ChatState> {
       timestamp: DateTime.now(),
       isActivity: false,
     );
+
+    final threadId = state.threadId ?? 'thread_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Update threads list with new message and title if needed
+    List<ChatThread> updatedThreads = state.threads;
+    final activeThread = state.threads.firstWhere(
+      (t) => t.id == threadId,
+      orElse: () => ChatThread(id: threadId, title: 'New Chat', messages: []),
+    );
+    
+    String newTitle = activeThread.title;
+    if (activeThread.messages.isEmpty || activeThread.title == 'New Chat' || activeThread.title.startsWith('Chat ')) {
+      newTitle = text.length > 25 ? '${text.substring(0, 22)}...' : text;
+    }
+
+    updatedThreads = state.threads.map((t) {
+      if (t.id == threadId) {
+        return ChatThread(
+          id: t.id,
+          title: newTitle,
+          messages: [...state.messages, userMsg],
+          currentProposal: t.currentProposal,
+        );
+      }
+      return t;
+    }).toList();
+
     state = state.copyWith(
       messages: [...state.messages, userMsg],
       isProcessing: true,
       error: null,
+      threads: updatedThreads,
     );
-
-    final threadId = state.threadId ?? 'thread_${DateTime.now().millisecondsSinceEpoch}';
 
     try {
       final response = await _dio.post(
@@ -171,12 +238,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
         );
       }
 
+      final responseId = DateTime.now().millisecondsSinceEpoch.toString();
       state = state.copyWith(
         messages: [
           ...state.messages,
           ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            text: reply,
+            id: responseId,
+            text: '',
             isUser: false,
             timestamp: DateTime.now(),
           ),
@@ -185,6 +253,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
         isProcessing: false,
         threadId: threadId,
       );
+
+      await _streamText(responseId, reply);
     } catch (e) {
       state = state.copyWith(
         isProcessing: false,
@@ -271,12 +341,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       reply ??= "Booking confirmed successfully.";
 
+      final responseId = DateTime.now().millisecondsSinceEpoch.toString();
       state = state.copyWith(
         messages: [
           ...state.messages,
           ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            text: reply,
+            id: responseId,
+            text: '',
             isUser: false,
             timestamp: DateTime.now(),
           ),
@@ -284,6 +355,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
         currentProposal: null,
         isProcessing: false,
       );
+
+      await _streamText(responseId, reply);
     } catch (e) {
       state = state.copyWith(
         isProcessing: false,
@@ -321,12 +394,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       reply ??= "Booking declined.";
 
+      final responseId = DateTime.now().millisecondsSinceEpoch.toString();
       state = state.copyWith(
         messages: [
           ...state.messages,
           ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            text: reply,
+            id: responseId,
+            text: '',
             isUser: false,
             timestamp: DateTime.now(),
           ),
@@ -334,12 +408,128 @@ class ChatNotifier extends StateNotifier<ChatState> {
         currentProposal: null,
         isProcessing: false,
       );
+
+      await _streamText(responseId, reply);
     } catch (e) {
       state = state.copyWith(
         isProcessing: false,
         error: 'Failed to decline booking: $e',
       );
     }
+  }
+
+  Future<void> _streamText(String messageId, String fullText) async {
+    final words = fullText.split(' ');
+    String currentText = '';
+    
+    for (int i = 0; i < words.length; i++) {
+      await Future.delayed(const Duration(milliseconds: 15));
+      currentText += (i == 0 ? '' : ' ') + words[i];
+      
+      final updatedMessages = state.messages.map((m) {
+        if (m.id == messageId) {
+          return m.copyWith(text: currentText);
+        }
+        return m;
+      }).toList();
+
+      final updatedThreads = state.threads.map((t) {
+        if (t.id == state.threadId) {
+          return ChatThread(
+            id: t.id,
+            title: t.title,
+            messages: updatedMessages,
+            currentProposal: state.currentProposal,
+          );
+        }
+        return t;
+      }).toList();
+
+      // Update the message and threads list in state
+      state = state.copyWith(
+        messages: updatedMessages,
+        threads: updatedThreads,
+      );
+    }
+  }
+
+  void switchThread(String targetThreadId) {
+    // 1. Save current active thread messages/proposal to threads list
+    final updatedThreads = state.threads.map((t) {
+      if (t.id == state.threadId) {
+        return ChatThread(
+          id: t.id,
+          title: t.title,
+          messages: state.messages,
+          currentProposal: state.currentProposal,
+        );
+      }
+      return t;
+    }).toList();
+
+    // 2. Find target thread
+    final targetThread = updatedThreads.firstWhere(
+      (t) => t.id == targetThreadId,
+      orElse: () => ChatThread(id: targetThreadId, title: 'Chat', messages: []),
+    );
+
+    // 3. Update state
+    state = state.copyWith(
+      threads: updatedThreads,
+      threadId: targetThreadId,
+      messages: targetThread.messages,
+      currentProposal: targetThread.currentProposal,
+    );
+  }
+
+  void createNewThread() {
+    // 1. Save current active thread messages/proposal first
+    final updatedThreads = state.threads.map((t) {
+      if (t.id == state.threadId) {
+        return ChatThread(
+          id: t.id,
+          title: t.title,
+          messages: state.messages,
+          currentProposal: state.currentProposal,
+        );
+      }
+      return t;
+    }).toList();
+
+    // 2. Create new thread
+    final newThreadId = 'thread_${DateTime.now().millisecondsSinceEpoch}';
+    final newThread = ChatThread(
+      id: newThreadId,
+      title: 'Chat ${updatedThreads.length + 1}',
+      messages: [],
+    );
+
+    state = state.copyWith(
+      threads: [...updatedThreads, newThread],
+      threadId: newThreadId,
+      messages: [],
+      currentProposal: null,
+    );
+  }
+
+  void deleteThread(String threadIdToDelete) {
+    if (state.threads.length <= 1) return;
+
+    final updatedThreads = state.threads.where((t) => t.id != threadIdToDelete).toList();
+    
+    String nextActiveId = state.threadId!;
+    if (state.threadId == threadIdToDelete) {
+      nextActiveId = updatedThreads.first.id;
+    }
+
+    final targetThread = updatedThreads.firstWhere((t) => t.id == nextActiveId);
+
+    state = state.copyWith(
+      threads: updatedThreads,
+      threadId: nextActiveId,
+      messages: targetThread.messages,
+      currentProposal: targetThread.currentProposal,
+    );
   }
 }
 
