@@ -108,3 +108,26 @@ Requires the `ADMIN` role.
 - **PUT** `/api/v1/admin/users/{user_id}/verify`: Verify a provider (e.g. after they submit documents).
 - **POST** `/api/v1/admin/destinations`: Add a new official destination to the platform.
 - **GET** `/api/v1/admin/destinations`: List all destinations.
+
+## Media Management
+
+### Get Cloudinary Upload Signature
+**Endpoint:** `GET /api/v1/media/signature`
+**Auth Required:** Yes (Traveler, Admin, or Provider)
+
+Allows the frontend to upload heavy image assets directly to Cloudinary, bypassing the backend to save bandwidth.
+
+**Response (200 OK):**
+```json
+{
+  "signature": "d3b...123",
+  "timestamp": 1709403821,
+  "api_key": "996717483356582",
+  "cloud_name": "micmcyg2"
+}
+```
+
+**Frontend Integration Example:**
+1. Fetch the signature from this endpoint.
+2. Create a `FormData` object with your file, the signature, the timestamp, and your Cloudinary upload preset.
+3. POST the `FormData` directly to `https://api.cloudinary.com/v1_1/micmcyg2/image/upload`.

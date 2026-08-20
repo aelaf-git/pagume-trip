@@ -99,6 +99,7 @@ dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },
     { name = "bcrypt" },
+    { name = "cloudinary" },
     { name = "fastapi", extra = ["standard"] },
     { name = "geoalchemy2" },
     { name = "passlib", extra = ["bcrypt"] },
@@ -124,6 +125,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.13.2" },
     { name = "asyncpg", specifier = ">=0.29.0" },
     { name = "bcrypt", specifier = "==4.0.1" },
+    { name = "cloudinary", specifier = ">=1.46.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.112.0" },
     { name = "geoalchemy2", specifier = ">=0.15.2" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
@@ -255,6 +257,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/76/d4/81420972a676e8ffea40450d8c8c92943e7218a78fe9b64359836cc9876b/click-8.4.2.tar.gz", hash = "sha256:9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6", size = 338000, upload-time = "2026-06-24T17:45:15.148Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/e2/79c688af8b210d232694e31e59da9f6ec747bae31c3f5946e4e9b98860d5/click-8.4.2-py3-none-any.whl", hash = "sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76", size = 119243, upload-time = "2026-06-24T17:45:13.73Z" },
+]
+
+[[package]]
+name = "cloudinary"
+version = "1.46.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "six" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/97/0e/a1beef32bf4abb896aa4b8d229535fb68acc53354be8624b9a78678331ec/cloudinary-1.46.0.tar.gz", hash = "sha256:f33ad786277748649d235b3d00f3afe058931f7bd1f516ccc89756f48802135a", size = 202175, upload-time = "2026-08-18T16:02:17.038Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b4/d0/c758c521a457d61b961d42a192c024e1ad74e4809149d302b5a01d2e8da6/cloudinary-1.46.0-py3-none-any.whl", hash = "sha256:a8ac2d39b35c20e526c7a1e4eb63e13bcdf5b224736ae56a9bcc236faadb95e8", size = 153066, upload-time = "2026-08-18T16:02:15.917Z" },
 ]
 
 [[package]]

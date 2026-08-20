@@ -5,10 +5,12 @@ on:
     branches: [ main, uat, ui, portals-dev ]
     paths:
       - 'portals/backend/**'
+      - '.github/workflows/**'
   pull_request:
     branches: [ main, uat, ui, portals-dev ]
     paths:
       - 'portals/backend/**'
+      - '.github/workflows/**'
 
 jobs:
   test:
@@ -18,15 +20,15 @@ jobs:
         working-directory: portals/backend
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: "3.13"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
+      uses: astral-sh/setup-uv@v10
       with:
         enable-cache: true
 

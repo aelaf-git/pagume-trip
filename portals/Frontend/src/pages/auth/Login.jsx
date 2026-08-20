@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { Compass } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import Card from "../../components/common/Card";
 import Input from "../../components/common/Input";
@@ -27,7 +26,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2 mb-6">
-          <Compass className="h-8 w-8 text-brand-600" />
+          <img src="/pagume_logo.png" alt="Pagume Trip" className="h-8 w-8 object-contain" />
           <span className="text-xl font-bold text-gray-900">Pagume Trip</span>
         </div>
 

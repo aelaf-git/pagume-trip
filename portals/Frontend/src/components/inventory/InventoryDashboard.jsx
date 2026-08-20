@@ -24,7 +24,7 @@ const INVENTORY_VIEWS = {
   },
   driver: {
     title: "Profile & Expertise",
-    description: "Keep your languages, coverage areas, availability, and rates up to date.",
+    description: "Manage your languages, coverage areas, rates, and verification documents.",
     Component: GuideProfileEditor,
   },
 };

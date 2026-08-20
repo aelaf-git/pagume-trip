@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Hotel, Building2, Car, UserRound, Compass } from "lucide-react";
+import { Hotel, Building2, Car, UserRound } from "lucide-react";
 import Card from "../../components/common/Card";
 
 const PROVIDER_TYPES = [
@@ -13,7 +13,7 @@ export default function ProviderRegistrationSelect() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
       <div className="flex items-center gap-2 mb-8">
-        <Compass className="h-8 w-8 text-brand-600" />
+        <img src="/pagume_logo.png" alt="Pagume Trip" className="h-8 w-8 object-contain" />
         <span className="text-xl font-bold text-gray-900">Pagume Trip</span>
       </div>
 

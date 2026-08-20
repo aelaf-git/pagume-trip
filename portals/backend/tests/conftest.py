@@ -12,13 +12,20 @@ from main import app
 from src.api.deps import get_db
 from src.db.base_class import Base
 
-# Use an in-memory SQLite database for testing
-# We use aiosqlite for async SQLite support
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Use PostgreSQL with PostGIS for testing
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL", 
+    "postgresql+asyncpg://testuser:testpassword@localhost:5432/testdb"
+)
+
+connect_args = {}
 
 engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL, 
+    connect_args=connect_args,
+    echo=False
 )
+
 TestingSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
 
 async def override_get_db() -> AsyncGenerator[AsyncSession, None]:

@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
+from geoalchemy2 import Geometry
 from src.db.base_class import Base
 
 class Hotel(Base):
@@ -10,6 +11,7 @@ class Hotel(Base):
     address = Column(String)
     latitude = Column(Float)
     longitude = Column(Float)
+    location = Column(Geometry(geometry_type='POINT', srid=4326))
     contact_details = Column(String)
     images = Column(JSON, default=list)
     amenities = Column(JSON, default=list)
@@ -70,3 +72,26 @@ class Vehicle(Base):
     driver_available = Column(Boolean, default=False)
     
     company = relationship("User", foreign_keys=[rental_company_id])
+
+class DriverProfile(Base):
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False, unique=True)
+    license_number = Column(String, nullable=False)
+    languages = Column(JSON, default=list)
+    experience_years = Column(Integer)
+    location = Column(String)
+    is_available = Column(Boolean, default=True)
+    verification_status = Column(String, default="PENDING")
+    
+    user = relationship("User", foreign_keys=[user_id])
+
+class TourGuideProfile(Base):
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False, unique=True)
+    expertise = Column(JSON, default=list) # e.g. ["Historical", "Wildlife"]
+    languages = Column(JSON, default=list)
+    location = Column(String)
+    is_available = Column(Boolean, default=True)
+    verification_status = Column(String, default="PENDING")
+    
+    user = relationship("User", foreign_keys=[user_id])

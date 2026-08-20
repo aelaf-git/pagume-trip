@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { ChevronsLeft, ChevronsRight, Compass } from "lucide-react";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export default function Sidebar({ navItems, portalName, collapsed, onToggle }) {
   return (
@@ -11,7 +11,7 @@ export default function Sidebar({ navItems, portalName, collapsed, onToggle }) {
       <div className="flex items-center justify-between px-4 h-16 border-b border-gray-800">
         {!collapsed && (
           <div className="flex items-center gap-2 font-semibold text-white">
-            <Compass className="h-6 w-6 text-brand-500" />
+            <img src="/pagume_logo.png" alt="Pagume" className="h-6 w-6 object-contain" />
             <span className="truncate">Pagume {portalName}</span>
           </div>
         )}
