@@ -73,7 +73,7 @@ class HomeScreen extends StatelessWidget {
               duration: '7 Days',
               locations: 'Lalibela, Gondar, Axum',
               description: 'Immerse yourself in ancient history and stunning...',
-              price: '\$1,250',
+              price: '1,250 ETB', // ✅ CHANGED
             ),
             const SizedBox(height: 12),
             _buildTourCard(
@@ -81,7 +81,7 @@ class HomeScreen extends StatelessWidget {
               duration: '4 Days',
               locations: 'Awassa, Arba Minch',
               description: 'Relax by the scenic lakes and explore local wildlife.',
-              price: '\$680',
+              price: '680 ETB', // ✅ CHANGED
             ),
             const SizedBox(height: 20),
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/chat_provider.dart';
+import '../../../core/providers/user_provider.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -28,11 +29,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chatState = ref.watch(chatProvider);
     final messages = chatState.messages;
     final proposal = chatState.currentProposal;
+    final user = ref.watch(userProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('AI Travel Assistant'),
+        title: Text(
+          user.isAuthenticated
+              ? 'Hi, Traveler!'
+              : 'AI Travel Assistant',
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -167,9 +173,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     chatNotifier.sendUserMessage(text);
 
     // 2. Create ONE ID for the activity message.
-    final activityId = DateTime.now().millisecondsSinceEpoch.toString();
+    final activityId =
+    DateTime.now().millisecondsSinceEpoch.toString();
 
-    // 3. Add initial activity message (FIXED: removed extra 'id' and 'steps' param here)
+    // 3. Add initial activity message
     chatNotifier.addAIResponse(
       '🔍 Pagume is planning your trip...',
       isActivity: true,
@@ -213,7 +220,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       const Duration(milliseconds: 300),
     );
 
-    final currentMessages = List<ChatMessage>.from(chatNotifier.state.messages);
+    final currentMessages =
+    List<ChatMessage>.from(chatNotifier.state.messages);
 
     final remainingMessages = currentMessages
         .where((msg) => msg.id != activityId)
