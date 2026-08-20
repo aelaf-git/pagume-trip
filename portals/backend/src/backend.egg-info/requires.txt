@@ -1,0 +1,13 @@
+alembic>=1.13.2
+asyncpg>=0.29.0
+fastapi[standard]>=0.112.0
+geoalchemy2>=0.15.2
+passlib[bcrypt]>=1.7.4
+bcrypt==4.0.1
+pgvector>=0.3.2
+psycopg2-binary>=2.9.9
+pydantic-settings>=2.4.0
+pydantic>=2.8.2
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.9
+sqlalchemy>=2.0.32

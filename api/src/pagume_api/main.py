@@ -7,6 +7,7 @@ from pagume_api.config import get_settings
 from pagume_api.db import Base, get_engine, get_session_factory
 from pagume_api.models import *  # noqa: F401,F403 — register tables
 from pagume_api.routers import bookings, destinations, hotels, tours, trips, vehicles
+from pagume_api.portal.api.routers import api_router as portal_router
 from pagume_api.seed import seed_if_empty
 
 
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(tours.router)
     app.include_router(trips.router)
     app.include_router(bookings.router)
+    app.include_router(portal_router, prefix="/api/v1")
 
     @app.get("/health")
     def health() -> dict[str, str]:
