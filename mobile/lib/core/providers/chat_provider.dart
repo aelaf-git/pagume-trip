@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:async';
+import 'package:dio/dio.dart';
+import 'dart:io';
 
 // --- PROVIDER ---
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
@@ -14,6 +15,7 @@ class ChatState {
   final bool isConnected;
   final String? error;
   final TripProposal? currentProposal;
+  final String? threadId;
 
   ChatState({
     this.messages = const [],
@@ -22,6 +24,7 @@ class ChatState {
     this.isConnected = false,
     this.error,
     this.currentProposal,
+    this.threadId,
   });
 
   ChatState copyWith({
@@ -31,6 +34,7 @@ class ChatState {
     bool? isConnected,
     String? error,
     TripProposal? currentProposal,
+    String? threadId,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -39,13 +43,34 @@ class ChatState {
       isConnected: isConnected ?? this.isConnected,
       error: error ?? this.error,
       currentProposal: currentProposal ?? this.currentProposal,
+      threadId: threadId ?? this.threadId,
     );
   }
 }
 
 // --- NOTIFIER CLASS ---
 class ChatNotifier extends StateNotifier<ChatState> {
-  ChatNotifier() : super(ChatState());
+  final Dio _dio = Dio();
+
+  // Point to local machine's Agent API.
+  // Using 10.0.2.2 for Android emulator, otherwise localhost/127.0.0.1.
+  String get _baseUrl {
+    try {
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:8100';
+      }
+    } catch (_) {}
+    return 'http://127.0.0.1:8100';
+  }
+
+  ChatNotifier() : super(ChatState()) {
+    _initThread();
+  }
+
+  void _initThread() {
+    final newThreadId = 'thread_${DateTime.now().millisecondsSinceEpoch}';
+    state = state.copyWith(threadId: newThreadId);
+  }
 
   // --- MESSAGE METHODS ---
 
@@ -69,7 +94,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     );
   }
 
-  void sendUserMessage(String text) async {
+  Future<void> sendUserMessage(String text) async {
     final userMsg = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
@@ -80,10 +105,92 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(
       messages: [...state.messages, userMsg],
       isProcessing: true,
+      error: null,
     );
-    await Future.delayed(const Duration(seconds: 1));
-    addAIResponse("I'm processing your request for '$text'...", isActivity: false);
-    state = state.copyWith(isProcessing: false);
+
+    final threadId = state.threadId ?? 'thread_${DateTime.now().millisecondsSinceEpoch}';
+
+    try {
+      final response = await _dio.post(
+        '$_baseUrl/v1/runs',
+        data: {
+          'thread_id': threadId,
+          'message': text,
+          'reset': false,
+        },
+      );
+
+      final data = response.data;
+      String? reply = data['message'];
+
+      // Fallback: if message is null, check public messages list
+      if (reply == null || reply.isEmpty) {
+        final msgs = data['messages'] as List?;
+        if (msgs != null && msgs.isNotEmpty) {
+          final lastMsg = msgs.last;
+          if (lastMsg['role'] == 'assistant') {
+            reply = lastMsg['content'];
+          }
+        }
+      }
+
+      reply ??= "I've processed your request.";
+
+      // Handle proposed options
+      TripProposal? proposal;
+      final selectedOption = data['selected_option'];
+      if (selectedOption != null) {
+        final items = selectedOption['items'] as List?;
+        final details = items != null
+            ? 'Includes: ${items.map((i) => i['name']).join(', ')}'
+            : 'Custom planned itinerary';
+        proposal = TripProposal(
+          id: selectedOption['option_id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          destination: selectedOption['label'] ?? 'Custom Proposal',
+          price: (selectedOption['total_etb'] as num?)?.toDouble() ?? 0.0,
+          currency: 'ETB',
+          details: details,
+          duration: 'Dynamic',
+        );
+      }
+
+      // Handle pending approval (interrupt)
+      final pending = data['pending_approval'];
+      if (pending != null) {
+        final items = pending['items'] as List?;
+        final details = items != null
+            ? 'Confirming booking for: ${items.map((i) => i['name']).join(', ')}'
+            : 'Booking approval request';
+        proposal = TripProposal(
+          id: pending['booking_id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          destination: 'Authorization Required',
+          price: (pending['total_etb'] as num?)?.toDouble() ?? 0.0,
+          currency: pending['currency'] ?? 'ETB',
+          details: details,
+          duration: 'N/A',
+        );
+      }
+
+      state = state.copyWith(
+        messages: [
+          ...state.messages,
+          ChatMessage(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            text: reply,
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        ],
+        currentProposal: proposal,
+        isProcessing: false,
+        threadId: threadId,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isProcessing: false,
+        error: 'Failed to communicate with AI Assistant: $e',
+      );
+    }
   }
 
   void updateMessage(String id, ChatMessage updatedMessage) {
@@ -99,6 +206,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   void clearMessages() {
+    final newThreadId = 'thread_${DateTime.now().millisecondsSinceEpoch}';
     state = ChatState(
       messages: [],
       isLoading: false,
@@ -106,6 +214,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       isConnected: false,
       error: null,
       currentProposal: null,
+      threadId: newThreadId,
     );
   }
 
@@ -131,28 +240,106 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(currentProposal: proposal);
   }
 
-  void acceptProposal() {
-    if (state.currentProposal == null) return;
-    final updated = state.currentProposal!.copyWith(status: 'accepted');
-    state = state.copyWith(currentProposal: updated);
-    addAIResponse(
-      '✅ **Booking Confirmed!** ✨ \n\n'
-          'Your trip to ${updated.destination} has been booked.\n'
-          '💰 Total: \$${updated.price} ${updated.currency}\n'
-          '📄 Details: ${updated.details}\n\n'
-          'A confirmation email has been sent to your registered email.',
-      isActivity: false,
-    );
+  Future<void> acceptProposal() async {
+    final proposal = state.currentProposal;
+    final threadId = state.threadId;
+    if (proposal == null || threadId == null) return;
+
+    state = state.copyWith(isProcessing: true, error: null);
+
+    try {
+      final response = await _dio.post(
+        '$_baseUrl/v1/runs/$threadId/approve',
+        data: {
+          'approved': true,
+          'spending_cap_etb': proposal.price,
+        },
+      );
+
+      final data = response.data;
+      String? reply = data['message'];
+
+      if (reply == null || reply.isEmpty) {
+        final msgs = data['messages'] as List?;
+        if (msgs != null && msgs.isNotEmpty) {
+          final lastMsg = msgs.last;
+          if (lastMsg['role'] == 'assistant') {
+            reply = lastMsg['content'];
+          }
+        }
+      }
+
+      reply ??= "Booking confirmed successfully.";
+
+      state = state.copyWith(
+        messages: [
+          ...state.messages,
+          ChatMessage(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            text: reply,
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        ],
+        currentProposal: null,
+        isProcessing: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isProcessing: false,
+        error: 'Failed to confirm booking: $e',
+      );
+    }
   }
 
-  void declineProposal() {
-    if (state.currentProposal == null) return;
-    state = state.copyWith(currentProposal: null);
-    addAIResponse(
-      '❌ **Booking declined.** No charges have been made.\n\n'
-          'Would you like me to suggest alternative options?',
-      isActivity: false,
-    );
+  Future<void> declineProposal() async {
+    final threadId = state.threadId;
+    if (threadId == null) return;
+
+    state = state.copyWith(isProcessing: true, error: null);
+
+    try {
+      final response = await _dio.post(
+        '$_baseUrl/v1/runs/$threadId/approve',
+        data: {
+          'approved': false,
+        },
+      );
+
+      final data = response.data;
+      String? reply = data['message'];
+
+      if (reply == null || reply.isEmpty) {
+        final msgs = data['messages'] as List?;
+        if (msgs != null && msgs.isNotEmpty) {
+          final lastMsg = msgs.last;
+          if (lastMsg['role'] == 'assistant') {
+            reply = lastMsg['content'];
+          }
+        }
+      }
+
+      reply ??= "Booking declined.";
+
+      state = state.copyWith(
+        messages: [
+          ...state.messages,
+          ChatMessage(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            text: reply,
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        ],
+        currentProposal: null,
+        isProcessing: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isProcessing: false,
+        error: 'Failed to decline booking: $e',
+      );
+    }
   }
 }
 
