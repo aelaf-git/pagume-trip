@@ -22,9 +22,14 @@ const INVENTORY_VIEWS = {
     description: "Manage the vehicles in your rental fleet, pricing, and availability.",
     Component: VehicleFleetManagement,
   },
+  "car-rental": {
+    title: "Vehicle Fleet Management",
+    description: "Manage the vehicles in your rental fleet, pricing, and availability.",
+    Component: VehicleFleetManagement,
+  },
   driver: {
-    title: "Profile & Expertise",
-    description: "Keep your languages, coverage areas, availability, and rates up to date.",
+    title: "Driver profile",
+    description: "License, languages, coverage, availability, and rates.",
     Component: GuideProfileEditor,
   },
 };

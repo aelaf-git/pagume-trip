@@ -1,16 +1,58 @@
-# React + Vite
+# Pagume Portals (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Provider-admin UI for Pagume Trip. Hotels, tour agencies, and car rentals register by category, share one **provider** login, then manage **their** inventory in category-specific admin surfaces. Pagume **administrators** use a separate login. A public browse (`/marketplace`) is secondary — not the product entry.
 
-Currently, two official plugins are available:
+## Product flow
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. **Register** at `/register` → pick category (`hotel`, `agency`, `transport`, `driver`) → `/register/:type`.
+2. **Provider sign in** at `/login` (shared for hotel, agency, car rental, driver).
+3. **Redirect by role** to the matching portal:
+   - `HOTEL_PROVIDER` → `/hotel/dashboard` (Property + Rooms)
+   - `TOUR_AGENCY` → `/agency/dashboard` (Packages)
+   - `CAR_RENTAL` → `/car-rental/dashboard` (Fleet)
+   - `DRIVER` → `/driver/dashboard`
+4. **Admin sign in** at `/admin/login` → `/admin/dashboard` (separate from providers).
+5. Optionally open **Public browse** at `/marketplace` for verified listings (no login required).
 
-## React Compiler
+```
+/login (providers) ──┬── HOTEL_PROVIDER  → /hotel/*
+                     ├── TOUR_AGENCY     → /agency/*
+                     ├── CAR_RENTAL      → /car-rental/*
+                     └── DRIVER          → /driver/*
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+/admin/login ──────────── ADMIN           → /admin/*
+```
 
-## Expanding the Oxlint configuration
+## Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+cd portals/Frontend
+npm install
+npm run dev
+```
+
+Default API base: `http://localhost:8000/api/v1` (override with `VITE_API_BASE_URL`).
+
+Start the unified API first (`cd api && pagume-api` and `alembic upgrade head` if needed).
+
+## Routes
+
+| Path | Audience |
+|------|----------|
+| `/` | Redirects to `/login` |
+| `/login` | Provider JWT login (`/api/v1/auth/login`) |
+| `/admin/login` | Administrator JWT login (same API, ADMIN role only) |
+| `/register` / `/register/:type` | Provider onboarding by category |
+| `/hotel/*` | Hotel / resort provider admin |
+| `/agency/*` | Travel agency admin |
+| `/car-rental/*` | Car rental admin |
+| `/driver/*` | Independent driver / guide admin |
+| `/admin/*` | Pagume administrators (requires `/admin/login`) |
+| `/marketplace` | Public browse of verified listings (secondary) |
+
+## Checklist
+
+1. Register a hotel provider with email + password, then sign in at `/login` → `/hotel`.
+2. Save property under **Property**, add rooms under **Rooms**.
+3. Sign in as admin at `/admin/login`, then verify the user (`PUT /api/v1/admin/users/{id}/verify`) so listings appear on `/marketplace`.
+4. Agency / car-rental / driver portals follow the same pattern for packages, fleet, and driver profile.

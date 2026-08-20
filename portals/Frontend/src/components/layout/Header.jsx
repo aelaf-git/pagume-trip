@@ -19,8 +19,9 @@ export default function Header({ portalName }) {
   }, []);
 
   const handleSignOut = async () => {
+    const wasAdmin = user?.role === "ADMIN";
     await logout();
-    navigate("/login", { replace: true });
+    navigate(wasAdmin ? "/admin/login" : "/login", { replace: true });
   };
 
   const initials = user?.name

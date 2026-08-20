@@ -45,6 +45,26 @@ Docs: `http://127.0.0.1:8000/docs`
 
 Tables are created on startup. Restarting `pagume-api` inserts any **new** seed rows (it does not wipe existing ones). Seeded destinations: Gorgora, Lalibela, Gondar, Bahir Dar, Axum, Harar, Simien Mountains, Addis Ababa, Omo Valley.
 
+### Portal schema (Alembic)
+
+Provider/admin tables live under `pagume_api.portal` and share the same `DATABASE_URL`. Apply migrations:
+
+```bash
+cd api
+alembic upgrade head
+```
+
+Portal HTTP prefix: `/api/v1` (auth, providers, admin, public marketplace). Agent inventory remains under `/v1`.
+
+| Role | Frontend portal |
+|------|-----------------|
+| `HOTEL_PROVIDER` | `/hotel` |
+| `TOUR_AGENCY` | `/agency` |
+| `CAR_RENTAL` | `/car-rental` |
+| `DRIVER` / `GUIDE` | `/driver` |
+| `ADMIN` | `/admin` |
+| (public) | `/marketplace` |
+
 Manual Postman prompts: [TEST_CASES.md](TEST_CASES.md).
 
 ## Point the agents at this API

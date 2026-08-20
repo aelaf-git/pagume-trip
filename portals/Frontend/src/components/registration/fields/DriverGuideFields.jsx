@@ -28,6 +28,22 @@ export default function DriverGuideFields({ data, errors, onChange }) {
           required
         />
         <Input
+          id="email"
+          label="Login email"
+          type="email"
+          value={data.email ?? ""}
+          onChange={(e) => onChange("email", e.target.value)}
+          required
+        />
+        <Input
+          id="password"
+          label="Login password (min 8 chars)"
+          type="password"
+          value={data.password ?? ""}
+          onChange={(e) => onChange("password", e.target.value)}
+          required
+        />
+        <Input
           id="licenseNumber"
           label="Professional license number"
           value={data.licenseNumber ?? ""}

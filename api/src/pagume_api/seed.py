@@ -60,3 +60,26 @@ def seed_all(session: Session) -> None:
             session.flush()
         _set_dates(session, models.TourAvailability, "tour_id", row["id"], dates)
     session.flush()
+
+    # Sync MainDestination to Portal Destination
+    from pagume_api.portal.db.models.destination import Destination as PortalDestination
+    
+    main_destinations = session.query(models.Destination).all()
+    portal_destinations = session.query(PortalDestination).all()
+    portal_names = {d.name.lower() for d in portal_destinations}
+    
+    for main_dest in main_destinations:
+        if main_dest.name.lower() not in portal_names:
+            session.add(PortalDestination(
+                name=main_dest.name,
+                description=main_dest.description,
+                region=main_dest.region,
+                zone=main_dest.zone,
+                latitude=main_dest.latitude,
+                longitude=main_dest.longitude,
+                category=main_dest.category,
+                verification_status=main_dest.verification_status,
+                status="ACTIVE",
+                images=[],
+            ))
+    session.flush()

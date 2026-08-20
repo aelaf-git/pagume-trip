@@ -5,7 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pagume_api.config import get_settings
 from pagume_api.db import Base, get_engine, get_session_factory
-from pagume_api.models import *  # noqa: F401,F403 — register tables
+from pagume_api.portal.db.base_class import Base as PortalBase
+import pagume_api.models  # noqa: F401
+import pagume_api.portal.db.models  # noqa: F401
 from pagume_api.routers import bookings, destinations, hotels, tours, trips, vehicles
 from pagume_api.portal.api.routers import api_router as portal_router
 from pagume_api.seed import seed_if_empty
@@ -14,6 +16,7 @@ from pagume_api.seed import seed_if_empty
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=get_engine())
+    PortalBase.metadata.create_all(bind=get_engine())
     settings = get_settings()
     if settings.seed_on_startup:
         db = get_session_factory()()

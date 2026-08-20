@@ -16,16 +16,27 @@ const EMPTY_FORM = {
   name: "",
   description: "",
   destination: "",
+  packageType: "multi_day",
   durationDays: "",
   price: "",
   minParticipants: "",
   maxParticipants: "",
   included: [],
   excluded: [],
+  accommodation: "",
+  transportation: "",
   activities: [],
+  guide: "",
   cancellationPolicy: "",
   images: [],
+  availabilityDates: [],
 };
+
+const PACKAGE_TYPES = [
+  { value: "day_trip", label: "Day trip" },
+  { value: "multi_day", label: "Multi-day tour" },
+  { value: "custom", label: "Custom tour" },
+];
 
 const generateId = () => `dyn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -115,15 +126,22 @@ export default function TourPackageBuilder() {
       name: pkg.name,
       description: pkg.description,
       destination: pkg.destination,
-      durationDays: String(pkg.durationDays),
+      packageType: pkg.packageType ?? "multi_day",
+      durationDays: String(pkg.durationDays ?? ""),
       price: String(pkg.price),
-      minParticipants: String(pkg.minParticipants),
-      maxParticipants: String(pkg.maxParticipants),
+      minParticipants: String(pkg.minParticipants ?? ""),
+      maxParticipants: String(pkg.maxParticipants ?? ""),
       included: pkg.included ?? [],
       excluded: pkg.excluded ?? [],
-      activities: (pkg.activities ?? []).map((activity) => activity.name),
-      cancellationPolicy: pkg.cancellationPolicy,
+      accommodation: pkg.accommodation ?? "",
+      transportation: pkg.transportation ?? "",
+      activities: (pkg.activities ?? []).map((activity) =>
+        typeof activity === "string" ? activity : activity.name
+      ),
+      guide: pkg.guide ?? "",
+      cancellationPolicy: pkg.cancellationPolicy ?? "",
       images: pkg.images ?? [],
+      availabilityDates: pkg.availabilityDates ?? [],
     });
     setErrors({});
     setImageUrl("");
@@ -349,7 +367,49 @@ export default function TourPackageBuilder() {
               error={errors.maxParticipants}
               onChange={(e) => handleChange("maxParticipants", e.target.value)}
             />
+            <Select
+              id="packageType"
+              label="Package type"
+              options={PACKAGE_TYPES}
+              value={form.packageType ?? "multi_day"}
+              onChange={(e) => handleChange("packageType", e.target.value)}
+            />
+            <Input
+              id="guide"
+              label="Guide"
+              value={form.guide ?? ""}
+              onChange={(e) => handleChange("guide", e.target.value)}
+            />
+            <Input
+              id="availabilityDates"
+              label="Availability dates (comma YYYY-MM-DD)"
+              value={(form.availabilityDates ?? []).join(", ")}
+              onChange={(e) =>
+                handleChange(
+                  "availabilityDates",
+                  e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                )
+              }
+            />
           </div>
+
+          <Textarea
+            id="accommodation"
+            label="Accommodation"
+            rows={2}
+            value={form.accommodation ?? ""}
+            onChange={(e) => handleChange("accommodation", e.target.value)}
+          />
+          <Textarea
+            id="transportation"
+            label="Transportation"
+            rows={2}
+            value={form.transportation ?? ""}
+            onChange={(e) => handleChange("transportation", e.target.value)}
+          />
 
           <Textarea
             id="description"

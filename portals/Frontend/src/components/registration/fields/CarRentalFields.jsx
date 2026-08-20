@@ -92,6 +92,22 @@ export default function CarRentalFields({ data, errors, onChange }) {
           onChange={(e) => onChange("companyName", e.target.value)}
           required
         />
+        <Input
+          id="email"
+          label="Login email"
+          type="email"
+          value={data.email ?? ""}
+          onChange={(e) => onChange("email", e.target.value)}
+          required
+        />
+        <Input
+          id="password"
+          label="Login password (min 8 chars)"
+          type="password"
+          value={data.password ?? ""}
+          onChange={(e) => onChange("password", e.target.value)}
+          required
+        />
         <Select
           id="fleetSize"
           label="Fleet size"

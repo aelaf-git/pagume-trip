@@ -31,6 +31,24 @@ export default function HotelFields({ data, errors, onChange }) {
           onChange={(e) => onChange("name", e.target.value)}
           required
         />
+        <Input
+          id="email"
+          label="Login email"
+          type="email"
+          value={data.email ?? ""}
+          error={errors.email}
+          onChange={(e) => onChange("email", e.target.value)}
+          required
+        />
+        <Input
+          id="password"
+          label="Login password (min 8 chars)"
+          type="password"
+          value={data.password ?? ""}
+          error={errors.password}
+          onChange={(e) => onChange("password", e.target.value)}
+          required
+        />
         <Select
           id="businessType"
           label="Business type"

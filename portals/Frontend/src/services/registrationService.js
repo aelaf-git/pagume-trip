@@ -1,21 +1,40 @@
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import * as authService from "./authService";
 
 export async function submitRegistration(payload) {
-  await delay(1200);
-  // Simulated backend response — replace with a real POST to /api/providers/register
-  console.info("Mock registration payload:", payload);
+  const { category, categoryData } = payload;
+  const email = categoryData.email || categoryData.contactEmail;
+  const password = categoryData.password || categoryData.accountPassword;
+  const fullName =
+    categoryData.name ||
+    categoryData.agencyName ||
+    categoryData.companyName ||
+    categoryData.fullName ||
+    email;
+
+  if (!email || !password) {
+    throw new Error(
+      "Add email and password (at least 8 characters) in business details so we can create your login."
+    );
+  }
+  if (String(password).length < 8) {
+    throw new Error("Password must be at least 8 characters.");
+  }
+
+  const user = await authService.register({
+    email,
+    password,
+    fullName,
+    providerType: category,
+  });
+
   return {
-    providerId: `PRV-${Date.now()}`,
+    providerId: String(user.id),
     status: "UNDER_REVIEW",
     submittedAt: new Date().toISOString(),
   };
 }
 
 export async function getOnboardingStatus() {
-  await delay(400);
-  // Replace with a real GET to /api/providers/me/status
   return {
     status: "UNDER_REVIEW",
     submittedAt: new Date().toISOString(),

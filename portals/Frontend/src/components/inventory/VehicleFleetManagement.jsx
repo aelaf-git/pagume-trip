@@ -22,11 +22,17 @@ const EMPTY_FORM = {
   transmission: "",
   fuelType: "",
   fourWheelDrive: false,
+  category: "car",
   dailyPrice: "",
   weeklyPrice: "",
   deposit: "",
   insurance: "",
   driverAvailability: "",
+  pickupLocations: "",
+  dropoffLocations: "",
+  rentalPolicies: "",
+  availabilityDates: "",
+  images: "",
 };
 
 const OPTION_LABELS = (options) => Object.fromEntries(options.map(({ value, label }) => [value, label]));
@@ -78,16 +84,22 @@ export default function VehicleFleetManagement() {
     setForm({
       make: vehicle.make,
       model: vehicle.model,
-      year: String(vehicle.year),
-      seats: String(vehicle.seats),
-      transmission: vehicle.transmission,
-      fuelType: vehicle.fuelType,
+      year: String(vehicle.year ?? ""),
+      seats: String(vehicle.seats ?? ""),
+      transmission: vehicle.transmission ?? "",
+      fuelType: vehicle.fuelType ?? "",
       fourWheelDrive: Boolean(vehicle.fourWheelDrive),
-      dailyPrice: String(vehicle.dailyPrice),
-      weeklyPrice: String(vehicle.weeklyPrice),
-      deposit: String(vehicle.deposit),
+      category: vehicle.category ?? "car",
+      dailyPrice: String(vehicle.dailyPrice ?? ""),
+      weeklyPrice: String(vehicle.weeklyPrice ?? ""),
+      deposit: String(vehicle.deposit ?? ""),
       insurance: vehicle.insurance ?? "",
-      driverAvailability: vehicle.driverAvailability,
+      driverAvailability: vehicle.driverAvailability ?? "",
+      pickupLocations: (vehicle.pickupLocations ?? []).join(", "),
+      dropoffLocations: (vehicle.dropoffLocations ?? []).join(", "),
+      rentalPolicies: vehicle.rentalPolicies ?? "",
+      availabilityDates: (vehicle.availabilityDates ?? []).join(", "),
+      images: (vehicle.images ?? []).join(", "),
     });
     setErrors({});
     setModalOpen(true);
@@ -97,6 +109,12 @@ export default function VehicleFleetManagement() {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
+
+  const splitList = (value) =>
+    String(value || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
   const handleSave = async () => {
     const validationErrors = validateVehicle(form);
@@ -111,11 +129,17 @@ export default function VehicleFleetManagement() {
       transmission: form.transmission,
       fuelType: form.fuelType,
       fourWheelDrive: form.fourWheelDrive,
+      category: form.category || "car",
       dailyPrice: Number(form.dailyPrice),
       weeklyPrice: Number(form.weeklyPrice),
       deposit: Number(form.deposit),
       insurance: form.insurance,
       driverAvailability: form.driverAvailability,
+      pickupLocations: splitList(form.pickupLocations),
+      dropoffLocations: splitList(form.dropoffLocations),
+      rentalPolicies: form.rentalPolicies,
+      availabilityDates: splitList(form.availabilityDates),
+      images: splitList(form.images),
     };
 
     try {
@@ -350,7 +374,44 @@ export default function VehicleFleetManagement() {
               onChange={(e) => handleChange("driverAvailability", e.target.value)}
               required
             />
+            <Input
+              id="category"
+              label="Category"
+              value={form.category ?? "car"}
+              onChange={(e) => handleChange("category", e.target.value)}
+            />
+            <Input
+              id="pickupLocations"
+              label="Pickup locations (comma-separated)"
+              value={form.pickupLocations ?? ""}
+              onChange={(e) => handleChange("pickupLocations", e.target.value)}
+            />
+            <Input
+              id="dropoffLocations"
+              label="Drop-off locations (comma-separated)"
+              value={form.dropoffLocations ?? ""}
+              onChange={(e) => handleChange("dropoffLocations", e.target.value)}
+            />
+            <Input
+              id="availabilityDates"
+              label="Availability dates (comma YYYY-MM-DD)"
+              value={form.availabilityDates ?? ""}
+              onChange={(e) => handleChange("availabilityDates", e.target.value)}
+            />
+            <Input
+              id="images"
+              label="Image URLs (comma-separated)"
+              value={form.images ?? ""}
+              onChange={(e) => handleChange("images", e.target.value)}
+            />
           </div>
+          <Textarea
+            id="rentalPolicies"
+            label="Rental policies"
+            rows={2}
+            value={form.rentalPolicies ?? ""}
+            onChange={(e) => handleChange("rentalPolicies", e.target.value)}
+          />
 
           <Checkbox
             id="fourWheelDrive"

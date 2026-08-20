@@ -14,11 +14,20 @@ const generateId = () => `range-${Date.now()}-${Math.random().toString(36).slice
 
 export default function GuideProfileEditor() {
   const [form, setForm] = useState({
+    name: "",
+    licenseNumber: "",
+    licenseExpiry: "",
+    experienceLevel: "",
+    location: "",
+    providerAssociation: "",
+    profilePictureUrl: "",
     languages: [],
     coverage: [],
     availabilityRanges: [],
     guidingDayRate: "",
     drivingDayRate: "",
+    documents: [],
+    verificationStatus: "UNDER_REVIEW",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,6 +47,13 @@ export default function GuideProfileEditor() {
   const loadProfile = useCallback(async () => {
     const profile = await inventoryService.getGuideProfile();
     setForm({
+      name: profile.name ?? "",
+      licenseNumber: profile.licenseNumber ?? "",
+      licenseExpiry: profile.licenseExpiry ?? "",
+      experienceLevel: profile.experienceLevel ?? "",
+      location: profile.location ?? "",
+      providerAssociation: profile.providerAssociation ?? "",
+      profilePictureUrl: profile.profilePictureUrl ?? "",
       languages: profile.languages ?? [],
       coverage: profile.coverage ?? [],
       availabilityRanges: (profile.availabilityRanges ?? []).map((range) => ({
@@ -47,6 +63,8 @@ export default function GuideProfileEditor() {
       })),
       guidingDayRate: String(profile.guidingDayRate ?? ""),
       drivingDayRate: String(profile.drivingDayRate ?? ""),
+      documents: profile.documents ?? [],
+      verificationStatus: profile.verificationStatus ?? "UNDER_REVIEW",
     });
     setLoading(false);
   }, []);
@@ -101,11 +119,19 @@ export default function GuideProfileEditor() {
     setSaving(true);
     try {
       await inventoryService.updateGuideProfile({
+        name: form.name,
+        licenseNumber: form.licenseNumber,
+        licenseExpiry: form.licenseExpiry,
+        experienceLevel: form.experienceLevel,
+        location: form.location || form.coverage[0] || "",
+        providerAssociation: form.providerAssociation,
+        profilePictureUrl: form.profilePictureUrl,
         languages: form.languages,
         coverage: form.coverage,
         availabilityRanges: form.availabilityRanges,
         guidingDayRate: Number(form.guidingDayRate),
         drivingDayRate: Number(form.drivingDayRate),
+        documents: form.documents,
       });
       showNotice("Profile saved.");
     } finally {
@@ -127,6 +153,50 @@ export default function GuideProfileEditor() {
 
       <Card>
         <div className="space-y-6">
+          {form.verificationStatus && (
+            <p className="text-sm text-gray-600">
+              Verification status:{" "}
+              <span className="font-medium text-gray-900">{form.verificationStatus}</span>
+            </p>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Full name"
+              value={form.name ?? ""}
+              onChange={(e) => handleChange("name", e.target.value)}
+            />
+            <Input
+              label="Profile picture URL"
+              value={form.profilePictureUrl ?? ""}
+              onChange={(e) => handleChange("profilePictureUrl", e.target.value)}
+            />
+            <Input
+              label="License number"
+              value={form.licenseNumber ?? ""}
+              onChange={(e) => handleChange("licenseNumber", e.target.value)}
+            />
+            <Input
+              label="License expiry"
+              type="date"
+              value={form.licenseExpiry ?? ""}
+              onChange={(e) => handleChange("licenseExpiry", e.target.value)}
+            />
+            <Input
+              label="Experience level"
+              value={form.experienceLevel ?? ""}
+              onChange={(e) => handleChange("experienceLevel", e.target.value)}
+            />
+            <Input
+              label="Primary location"
+              value={form.location ?? ""}
+              onChange={(e) => handleChange("location", e.target.value)}
+            />
+            <Input
+              label="Provider association"
+              value={form.providerAssociation ?? ""}
+              onChange={(e) => handleChange("providerAssociation", e.target.value)}
+            />
+          </div>
           <div>
             <p className="text-sm font-medium text-gray-700 mb-2">Languages spoken</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2">

@@ -1,68 +1,44 @@
-const MOCK_USERS = {
-  "provider@pagume.et": {
-    password: "password123",
-    user: {
-      id: "p-1",
-      name: "Habesha Hotels PLC",
-      email: "provider@pagume.et",
-      role: "provider",
-      providerType: "hotel",
-    },
-  },
-  "agency@pagume.et": {
-    password: "password123",
-    user: {
-      id: "p-2",
-      name: "GoGreen Tours",
-      email: "agency@pagume.et",
-      role: "provider",
-      providerType: "agency",
-    },
-  },
-  "transport@pagume.et": {
-    password: "password123",
-    user: {
-      id: "p-3",
-      name: "Addis Rent-a-Car",
-      email: "transport@pagume.et",
-      role: "provider",
-      providerType: "transport",
-    },
-  },
-  "driver@pagume.et": {
-    password: "password123",
-    user: {
-      id: "p-4",
-      name: "Dawit Mengistu",
-      email: "driver@pagume.et",
-      role: "provider",
-      providerType: "driver",
-    },
-  },
-  "admin@pagume.et": {
-    password: "password123",
-    user: { id: "a-1", name: "Pagume Admin", email: "admin@pagume.et", role: "admin" },
-  },
-};
+import { api } from "./api";
+import { normalizeUser, REGISTER_TYPE_TO_ROLE } from "../utils/roles";
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export async function login(email, password) {
-  await delay(600);
-  const record = MOCK_USERS[email.toLowerCase()];
-  if (!record || record.password !== password) {
-    throw new Error("Invalid email or password.");
+  const form = new URLSearchParams();
+  form.set("username", email);
+  form.set("password", password);
+
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text.includes("Incorrect") ? "Invalid email or password." : "Login failed.");
   }
-  return {
-    token: `mock-jwt-${record.user.role}-${Date.now()}`,
-    user: record.user,
-  };
+  const { access_token } = await res.json();
+  const me = await api.get("/auth/me", access_token);
+  return { token: access_token, user: normalizeUser(me) };
+}
+
+export async function register({ email, password, fullName, providerType }) {
+  const role = REGISTER_TYPE_TO_ROLE[providerType];
+  if (!role) throw new Error("Unknown provider type");
+  const created = await api.post("/auth/register", {
+    email,
+    password,
+    full_name: fullName,
+    role,
+  });
+  return normalizeUser(created);
 }
 
 export async function logout() {
-  await delay(150);
   return true;
 }
 
+export async function fetchMe(token) {
+  const me = await api.get("/auth/me", token);
+  return normalizeUser(me);
+}

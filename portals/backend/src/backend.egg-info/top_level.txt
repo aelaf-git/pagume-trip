@@ -1,4 +1,0 @@
-api
-core
-db
-schemas
