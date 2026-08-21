@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/user_provider.dart';
-import '../../../core/widgets/custom_button.dart';
-import '../../../core/widgets/custom_text_field.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -18,10 +16,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
 
+  // --- YOUR LOGIC ---
   Future<void> _signup() async {
     // Validate all fields are filled
     if (_nameController.text.isEmpty ||
@@ -45,8 +45,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Simulate API call
       await Future.delayed(const Duration(seconds: 2));
 
+      // Save user data to secure storage via Riverpod
       final userNotifier = ref.read(userProvider.notifier);
       await userNotifier.login(
         token: 'demo_token_${DateTime.now().millisecondsSinceEpoch}',
@@ -70,6 +72,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
   }
 
+  // --- AELAF'S UI ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,19 +83,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Spacer(flex: 1),
               const Text(
-                '✨ Create Account',
+                'Create Account',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -103,67 +104,136 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   color: AppColors.grey600,
                 ),
               ),
-              const SizedBox(height: 24),
-              CustomTextField(
+              const SizedBox(height: 32),
+
+              // Full Name
+              TextField(
                 controller: _nameController,
-                hintText: 'Full Name',
-                prefixIcon: Icons.person,
+                decoration: InputDecoration(
+                  hintText: 'Full Name',
+                  prefixIcon: const Icon(Icons.person),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
+
               const SizedBox(height: 16),
-              CustomTextField(
+
+              // Email
+              TextField(
                 controller: _emailController,
-                hintText: 'Email',
-                prefixIcon: Icons.email,
                 keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Email',
+                  prefixIcon: const Icon(Icons.email),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
+
               const SizedBox(height: 16),
-              CustomTextField(
+
+              // Password
+              TextField(
                 controller: _passwordController,
-                hintText: 'Password',
-                prefixIcon: Icons.lock,
-                suffixIcon: _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                obscureText: _obscurePassword,
-                onSuffixIconTap: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
+                  hintText: 'Password',
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
+
               const SizedBox(height: 16),
-              CustomTextField(
+
+              // Confirm Password
+              TextField(
                 controller: _confirmPasswordController,
-                hintText: 'Confirm Password',
-                prefixIcon: Icons.lock_outline,
-                suffixIcon: _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                obscureText: _obscureConfirmPassword,
-                onSuffixIconTap: () {
-                  setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
-                },
+                obscureText: !_isConfirmPasswordVisible,
+                decoration: InputDecoration(
+                  hintText: 'Confirm Password',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isConfirmPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
+
               const SizedBox(height: 24),
-              CustomButton(
-                text: 'Sign Up',
-                onPressed: _signup,
-                isLoading: _isLoading,
+
+              // Sign Up button (Uses YOUR logic)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _signup,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                    'Sign Up',
+                    style: TextStyle(
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
               ),
+
               const SizedBox(height: 16),
+
+              // Login Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    'Already have an account?',
-                    style: TextStyle(color: AppColors.grey600),
+                    "Already have an account?",
                   ),
                   TextButton(
                     onPressed: () {
                       context.go('/login');
                     },
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
+                    child: const Text(
+                      'Login',
                     ),
-                    child: const Text('Login'),
                   ),
                 ],
               ),
-              const Spacer(flex: 2),
             ],
           ),
         ),

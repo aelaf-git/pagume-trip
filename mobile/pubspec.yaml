@@ -16,21 +16,32 @@ dependencies:
   riverpod_annotation: ^2.3.0
 
   # ============================================
-  # NAVIGATION
+  # NAVIGATION (YOUR VERSION)
   # ============================================
   go_router: ^12.0.0
 
   # ============================================
-  # SECURE STORAGE
+  # SECURE STORAGE (FOR LOGIN)
   # ============================================
   flutter_secure_storage: ^9.0.0
 
   # ============================================
-  # UI & DESIGN
+  # DATA PERSISTENCE (FOR SAVING TRIPS)
+  # ============================================
+  shared_preferences: ^2.2.2
+
+  # ============================================
+  # MAP & URL LAUNCHER
+  # ============================================
+  url_launcher: ^6.2.1
+
+  # ============================================
+  # UI & DESIGN (AELAF'S ADDITIONS)
   # ============================================
   google_fonts: ^6.1.0
   flutter_svg: ^2.0.9
   cached_network_image: ^3.3.0
+  cupertino_icons: ^1.0.6
 
   # ============================================
   # NETWORKING

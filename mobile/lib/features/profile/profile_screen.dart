@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/providers/user_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -12,212 +11,454 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  String _userEmail = 'user@example.com';
-  String _userName = 'Traveler';
-  bool _isLoading = false;
+  // Controllers for user input
+  final TextEditingController _nameController = TextEditingController(text: 'Traveler');
+  final TextEditingController _emailController = TextEditingController(text: 'traveler@pagume.com');
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    final userState = ref.read(userProvider);
-    if (userState.user != null) {
-      setState(() {
-        _userEmail = userState.user!.email;
-        _userName = userState.user!.name;
-      });
-    }
-  }
-
-  Future<void> _logout() async {
-    setState(() => _isLoading = true);
-
-    // ✅ Clear token from secure storage
-    final userNotifier = ref.read(userProvider.notifier);
-    await userNotifier.logout();
-
-    setState(() => _isLoading = false);
-    if (mounted) {
-      context.go('/login');
-    }
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text(
+          'Profile',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
+
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+
           children: [
-            _buildProfileHeader(),
-            const SizedBox(height: 16),
-            _buildSettingsItem(
-              icon: Icons.person_outline,
-              title: 'Edit Profile',
-              onTap: () {},
-            ),
-            _buildSettingsItem(
-              icon: Icons.payment,
-              title: 'Payment Methods',
-              onTap: () {},
-            ),
-            _buildSettingsItem(
-              icon: Icons.history,
-              title: 'Booking History',
-              onTap: () {},
-            ),
-            _buildSettingsItem(
-              icon: Icons.notifications_outlined,
-              title: 'Notifications',
-              trailing: Switch(
-                value: true,
-                onChanged: (value) {},
-                activeColor: AppColors.primary,
+            // ======================================================
+            // PROFILE AVATAR
+            // ======================================================
+
+            Container(
+              width: 100,
+              height: 100,
+
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+
+                border: Border.all(
+                  color: AppColors.accent,
+                  width: 3,
+                ),
+              ),
+
+              child: const Icon(
+                Icons.person,
+                size: 55,
+                color: Colors.white,
               ),
             ),
-            _buildSettingsItem(
-              icon: Icons.language,
-              title: 'Language',
-              trailing: const Text('English'),
-              onTap: () {},
-            ),
-            _buildSettingsItem(
-              icon: Icons.help_outline,
-              title: 'Help & Support',
-              onTap: () {},
-            ),
+
             const SizedBox(height: 16),
-            _buildLogoutButton(),
+
+            // ======================================================
+            // DISPLAY USER NAME (UPDATES LIVE)
+            // ======================================================
+
+            Text(
+              _nameController.text.isEmpty ? 'Traveler' : _nameController.text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            // ======================================================
+            // DISPLAY USER EMAIL (UPDATES LIVE)
+            // ======================================================
+
+            Text(
+              _emailController.text.isEmpty ? 'traveler@pagume.com' : _emailController.text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.grey600,
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // ======================================================
+            // EDIT PROFILE SECTION
+            // ======================================================
+
+            _buildSectionTitle('Edit Profile'),
+
+            const SizedBox(height: 15),
+
+            // Name Input
+            TextField(
+              controller: _nameController,
+              onChanged: (value) {
+                setState(() {}); // Updates the screen live
+              },
+              decoration: InputDecoration(
+                labelText: 'Your Name',
+                prefixIcon: const Icon(Icons.person_outline),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            // Email Input
+            TextField(
+              controller: _emailController,
+              onChanged: (value) {
+                setState(() {}); // Updates the screen live
+              },
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Your Email',
+                prefixIcon: const Icon(Icons.email_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // ======================================================
+            // ACCOUNT SECTION
+            // ======================================================
+
+            _buildSectionTitle('Account'),
+
+            const SizedBox(height: 10),
+
+            _buildProfileItem(
+              context: context,
+              icon: Icons.lock_outline,
+              title: 'Security',
+              subtitle: 'Password and account security',
+              onTap: () {
+                _showMessage(
+                  context,
+                  'Security settings coming soon',
+                );
+              },
+            ),
+
+            _buildProfileItem(
+              context: context,
+              icon: Icons.notifications_none,
+              title: 'Notifications',
+              subtitle: 'Manage your notifications',
+              onTap: () {
+                _showMessage(
+                  context,
+                  'Notification settings coming soon',
+                );
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // ======================================================
+            // TRAVEL SECTION
+            // ======================================================
+
+            _buildSectionTitle('Travel'),
+
+            const SizedBox(height: 10),
+
+            _buildProfileItem(
+              context: context,
+              icon: Icons.map_outlined,
+              title: 'My Trips',
+              subtitle: 'View your saved trips',
+              onTap: () {
+                context.go('/trips');
+              },
+            ),
+
+            _buildProfileItem(
+              context: context,
+              icon: Icons.history,
+              title: 'Booking History',
+              subtitle: 'View your previous bookings',
+              onTap: () {
+                _showMessage(
+                  context,
+                  'Booking history coming soon',
+                );
+              },
+            ),
+
+            _buildProfileItem(
+              context: context,
+              icon: Icons.payment_outlined,
+              title: 'Payment Methods',
+              subtitle: 'Manage your payment methods',
+              onTap: () {
+                _showMessage(
+                  context,
+                  'Payment methods coming soon',
+                );
+              },
+            ),
+
+            const SizedBox(height: 30),
+
+            // ======================================================
+            // LOGOUT BUTTON
+            // ======================================================
+
+            SizedBox(
+              width: double.infinity,
+
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  _showLogoutDialog(
+                    context,
+                    ref,
+                  );
+                },
+
+                icon: const Icon(
+                  Icons.logout,
+                ),
+
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+
+                  side: const BorderSide(
+                    color: Colors.red,
+                  ),
+
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                  ),
+
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ======================================================
+            // APP VERSION
+            // ======================================================
+
+            const Text(
+              'Pagume Trip',
+              style: TextStyle(
+                color: AppColors.grey600,
+                fontSize: 13,
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            const Text(
+              'Explore • Book • Experience',
+              style: TextStyle(
+                color: AppColors.grey600,
+                fontSize: 12,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.grey200),
-      ),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 40,
-            backgroundColor: AppColors.primary,
-            child: Icon(
-              Icons.person,
-              size: 40,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _userName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  _userEmail,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.grey600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '✅ Verified',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.accentDark,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {},
-          ),
-        ],
+  // ==========================================================
+  // SECTION TITLE
+  // ==========================================================
+
+  Widget _buildSectionTitle(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+
+      child: Text(
+        title,
+
+        style: TextStyle(
+          color: AppColors.primary,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
-  Widget _buildSettingsItem({
+  // ==========================================================
+  // PROFILE ITEM
+  // ==========================================================
+
+  Widget _buildProfileItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
-    VoidCallback? onTap,
-    Widget? trailing,
+    required String subtitle,
+    required VoidCallback onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
+
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.grey200),
+
+        borderRadius: BorderRadius.circular(14),
+
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.1),
+        ),
       ),
+
       child: ListTile(
-        leading: Icon(icon, color: AppColors.primary),
-        title: Text(title),
-        trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 5,
+        ),
+
+        leading: Container(
+          width: 44,
+          height: 44,
+
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+
+          child: Icon(
+            icon,
+            color: AppColors.primary,
+          ),
+        ),
+
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
+        ),
+
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: AppColors.grey600,
+            fontSize: 12,
+          ),
+        ),
+
+        trailing: const Icon(
+          Icons.chevron_right,
+          color: Colors.grey,
+        ),
+
         onTap: onTap,
       ),
     );
   }
 
-  Widget _buildLogoutButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _logout,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red.shade50,
-          foregroundColor: Colors.red,
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+  // ==========================================================
+  // LOGOUT DIALOG
+  // ==========================================================
+
+  void _showLogoutDialog(
+      BuildContext context,
+      WidgetRef ref,
+      ) {
+    showDialog(
+      context: context,
+
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Logout?',
           ),
-        ),
-        child: _isLoading
-            ? const SizedBox(
-          height: 20,
-          width: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.red,
+
+          content: const Text(
+            'Are you sure you want to logout?',
           ),
-        )
-            : const Text('Logout'),
+
+          actions: [
+            // KEEP ACCOUNT
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+
+              child: const Text(
+                'Cancel',
+              ),
+            ),
+
+            // LOGOUT
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                context.go('/login');
+              },
+
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+
+              child: const Text(
+                'Logout',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ==========================================================
+  // MESSAGE
+  // ==========================================================
+
+  void _showMessage(
+      BuildContext context,
+      String message,
+      ) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
       ),
     );
   }

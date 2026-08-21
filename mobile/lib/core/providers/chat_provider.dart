@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'dart:io';
 
 // --- PROVIDER ---
@@ -46,6 +48,7 @@ class ChatState {
   final TripProposal? currentProposal;
   final String? threadId;
   final List<ChatThread> threads;
+  final List<TripProposal> savedTrips;
 
   ChatState({
     this.messages = const [],
@@ -56,6 +59,7 @@ class ChatState {
     this.currentProposal,
     this.threadId,
     this.threads = const [],
+    this.savedTrips = const [],
   });
 
   ChatState copyWith({
@@ -67,6 +71,7 @@ class ChatState {
     TripProposal? currentProposal,
     String? threadId,
     List<ChatThread>? threads,
+    List<TripProposal>? savedTrips,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -77,6 +82,7 @@ class ChatState {
       currentProposal: currentProposal ?? this.currentProposal,
       threadId: threadId ?? this.threadId,
       threads: threads ?? this.threads,
+      savedTrips: savedTrips ?? this.savedTrips,
     );
   }
 }
@@ -98,6 +104,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   ChatNotifier() : super(ChatState()) {
     _initThread();
+    _loadSavedTrips();
   }
 
   void _initThread() {
@@ -111,6 +118,35 @@ class ChatNotifier extends StateNotifier<ChatState> {
       threadId: newThreadId,
       threads: [initialThread],
     );
+  }
+
+  // --- PERSISTENCE LOGIC ---
+  Future<void> _loadSavedTrips() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? tripsJson = prefs.getString('saved_trips');
+
+      if (tripsJson != null) {
+        final List<dynamic> decoded = jsonDecode(tripsJson);
+        final List<TripProposal> loadedTrips =
+            decoded.map((json) => TripProposal.fromJson(json)).toList();
+
+        state = state.copyWith(savedTrips: loadedTrips);
+      }
+    } catch (e) {
+      // Ignore persistence errors; app still works without saved trips.
+    }
+  }
+
+  Future<void> _saveTripsToStorage(List<TripProposal> trips) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<Map<String, dynamic>> jsonList =
+          trips.map((trip) => trip.toJson()).toList();
+      await prefs.setString('saved_trips', jsonEncode(jsonList));
+    } catch (e) {
+      // Ignore persistence errors.
+    }
   }
 
   // --- MESSAGE METHODS ---
@@ -152,9 +188,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
       (t) => t.id == threadId,
       orElse: () => ChatThread(id: threadId, title: 'New Chat', messages: []),
     );
-    
+
     String newTitle = activeThread.title;
-    if (activeThread.messages.isEmpty || activeThread.title == 'New Chat' || activeThread.title.startsWith('Chat ')) {
+    if (activeThread.messages.isEmpty ||
+        activeThread.title == 'New Chat' ||
+        activeThread.title.startsWith('Chat ')) {
       newTitle = text.length > 25 ? '${text.substring(0, 22)}...' : text;
     }
 
@@ -212,7 +250,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
             ? 'Includes: ${items.map((i) => i['name']).join(', ')}'
             : 'Custom planned itinerary';
         proposal = TripProposal(
-          id: selectedOption['option_id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          id: selectedOption['option_id'] ??
+              DateTime.now().millisecondsSinceEpoch.toString(),
           destination: selectedOption['label'] ?? 'Custom Proposal',
           price: (selectedOption['total_etb'] as num?)?.toDouble() ?? 0.0,
           currency: 'ETB',
@@ -229,7 +268,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
             ? 'Confirming booking for: ${items.map((i) => i['name']).join(', ')}'
             : 'Booking approval request';
         proposal = TripProposal(
-          id: pending['booking_id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          id: pending['booking_id'] ??
+              DateTime.now().millisecondsSinceEpoch.toString(),
           destination: 'Authorization Required',
           price: (pending['total_etb'] as num?)?.toDouble() ?? 0.0,
           currency: pending['currency'] ?? 'ETB',
@@ -285,6 +325,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
       error: null,
       currentProposal: null,
       threadId: newThreadId,
+      threads: [
+        ChatThread(id: newThreadId, title: 'New Chat', messages: []),
+      ],
+      savedTrips: state.savedTrips,
     );
   }
 
@@ -341,6 +385,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       reply ??= "Booking confirmed successfully.";
 
+      final accepted = proposal.copyWith(status: 'accepted');
+      final updatedTrips = List<TripProposal>.from(state.savedTrips)..add(accepted);
+      await _saveTripsToStorage(updatedTrips);
+
       final responseId = DateTime.now().millisecondsSinceEpoch.toString();
       state = state.copyWith(
         messages: [
@@ -354,6 +402,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         ],
         currentProposal: null,
         isProcessing: false,
+        savedTrips: updatedTrips,
       );
 
       await _streamText(responseId, reply);
@@ -418,14 +467,31 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
+  void cancelTrip(String tripId) {
+    final updatedTrips =
+        state.savedTrips.where((trip) => trip.id != tripId).toList();
+
+    state = state.copyWith(
+      savedTrips: updatedTrips,
+    );
+
+    _saveTripsToStorage(updatedTrips);
+
+    addAIResponse(
+      '❌ Trip cancelled successfully.\n\n'
+      'No charges have been made. Feel free to book another adventure!',
+      isActivity: false,
+    );
+  }
+
   Future<void> _streamText(String messageId, String fullText) async {
     final words = fullText.split(' ');
     String currentText = '';
-    
+
     for (int i = 0; i < words.length; i++) {
       await Future.delayed(const Duration(milliseconds: 15));
       currentText += (i == 0 ? '' : ' ') + words[i];
-      
+
       final updatedMessages = state.messages.map((m) {
         if (m.id == messageId) {
           return m.copyWith(text: currentText);
@@ -515,8 +581,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
   void deleteThread(String threadIdToDelete) {
     if (state.threads.length <= 1) return;
 
-    final updatedThreads = state.threads.where((t) => t.id != threadIdToDelete).toList();
-    
+    final updatedThreads =
+        state.threads.where((t) => t.id != threadIdToDelete).toList();
+
     String nextActiveId = state.threadId!;
     if (state.threadId == threadIdToDelete) {
       nextActiveId = updatedThreads.first.id;
@@ -589,6 +656,30 @@ class TripProposal {
     required this.duration,
     this.status = 'pending',
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'destination': destination,
+      'price': price,
+      'currency': currency,
+      'details': details,
+      'status': status,
+      'duration': duration,
+    };
+  }
+
+  factory TripProposal.fromJson(Map<String, dynamic> json) {
+    return TripProposal(
+      id: json['id'],
+      destination: json['destination'],
+      price: (json['price'] as num).toDouble(),
+      currency: json['currency'],
+      details: json['details'],
+      status: json['status'],
+      duration: json['duration'],
+    );
+  }
 
   TripProposal copyWith({String? status}) {
     return TripProposal(

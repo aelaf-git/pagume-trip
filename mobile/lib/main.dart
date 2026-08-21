@@ -10,6 +10,7 @@ import 'features/profile/profile_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/signup_screen.dart';
+import 'features/booking/booking_screen.dart';
 
 void main() {
   runApp(
@@ -48,31 +49,24 @@ class PagumeTripApp extends ConsumerWidget {
   }
 }
 
-// MainScreen with Bottom Navigation
+// MainScreen with Bottom Navigation (Updated for StatefulShellRoute)
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key, required this.child});
-  final Widget child;
+  const MainScreen({super.key, required this.navigationShell});
+  final StatefulNavigationShell navigationShell;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
-  final List<String> _routes = ['/home', '/chat', '/trips', '/profile'];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: widget.child,
+      body: widget.navigationShell,
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
+        currentIndex: widget.navigationShell.currentIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          context.go(_routes[index]);
+          widget.navigationShell.goBranch(index);
         },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primary,
@@ -96,6 +90,11 @@ class _MainScreenState extends State<MainScreen> {
             label: 'My Trips',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.edit_note_outlined),
+            activeIcon: Icon(Icons.edit_note),
+            label: 'Book',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profile',
@@ -106,78 +105,96 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// GoRouter Configuration with Auth Redirect
+// GoRouter Configuration with Auth Redirect and Stateful Shell
 final GoRouter _router = GoRouter(
   initialLocation: '/',
-  // This runs before every navigation to check auth
   redirect: (context, state) {
-    // Get auth state from Riverpod
     final authState = ProviderScope.containerOf(context).read(userProvider);
     final isAuthenticated = authState.isAuthenticated;
     final isOnAuthScreen = state.matchedLocation == '/login' ||
         state.matchedLocation == '/signup' ||
         state.matchedLocation == '/';
 
-    // If NOT authenticated and NOT on auth screen → go to login
     if (!isAuthenticated && !isOnAuthScreen) {
       return '/login';
     }
-
-    // If authenticated and on auth screen → go to home
     if (isAuthenticated && isOnAuthScreen) {
       return '/home';
     }
-
-    // Otherwise, stay where we are
     return null;
   },
   routes: [
-    // Splash Screen
     GoRoute(
       path: '/',
       name: 'splash',
       builder: (context, state) => const SplashScreen(),
     ),
-
-    // Login Screen
     GoRoute(
       path: '/login',
       name: 'login',
       builder: (context, state) => const LoginScreen(),
     ),
-
-    // Sign-up Screen
     GoRoute(
       path: '/signup',
       name: 'signup',
       builder: (context, state) => const SignupScreen(),
     ),
 
-    // ShellRoute for screens WITH bottom navigation
-    ShellRoute(
-      builder: (context, state, child) {
-        return MainScreen(child: child);
+    // StatefulShellRoute (Auto-syncs navigation)
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return MainScreen(navigationShell: navigationShell);
       },
-      routes: [
-        GoRoute(
-          path: '/home',
-          name: 'home',
-          builder: (context, state) => const HomeScreen(),
+      branches: [
+        // 1. Home Tab
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/home',
+              name: 'home',
+              builder: (context, state) => const HomeScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/chat',
-          name: 'chat',
-          builder: (context, state) => const ChatScreen(),
+        // 2. Chat Tab
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/chat',
+              name: 'chat',
+              builder: (context, state) => const ChatScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/trips',
-          name: 'trips',
-          builder: (context, state) => const TripPlannerScreen(),
+        // 3. Trips Tab
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/trips',
+              name: 'trips',
+              builder: (context, state) => const TripPlannerScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/profile',
-          name: 'profile',
-          builder: (context, state) => const ProfileScreen(),
+        // 4. Booking Tab
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/booking',
+              name: 'booking',
+              builder: (context, state) => const BookingScreen(),
+            ),
+          ],
+        ),
+        // 5. Profile Tab
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/profile',
+              name: 'profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
+          ],
         ),
       ],
     ),
