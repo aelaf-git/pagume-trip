@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/chat_provider.dart';
-import '../../core/providers/user_provider.dart';
 
 class TripPlannerScreen extends ConsumerWidget {
   const TripPlannerScreen({super.key});
@@ -13,7 +12,6 @@ class TripPlannerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final chatState = ref.watch(chatProvider);
     final savedTrips = chatState.savedTrips;
-    final user = ref.watch(userProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -24,7 +22,7 @@ class TripPlannerScreen extends ConsumerWidget {
         elevation: 0,
       ),
       body: savedTrips.isEmpty
-          ? _buildEmptyState(context, ref) // Pass ref here
+          ? _buildEmptyState(context)
           : ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: savedTrips.length,
@@ -40,10 +38,7 @@ class TripPlannerScreen extends ConsumerWidget {
   // EMPTY STATE
   // ==========================================================
 
-  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
-    // Watch the user provider inside this function
-    final user = ref.watch(userProvider);
-
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -54,11 +49,9 @@ class TripPlannerScreen extends ConsumerWidget {
             color: Colors.grey,
           ),
           const SizedBox(height: 16),
-          Text(
-            user.isAuthenticated
-                ? 'Hi Traveler, no trips yet!'
-                : 'No Trips Booked Yet',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          const Text(
+            'Hi Traveler, no trips yet!',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(

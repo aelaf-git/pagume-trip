@@ -36,7 +36,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo Icon
+            // App Logo
             const Icon(
               Icons.map_outlined,
               size: 80,

@@ -11,6 +11,7 @@ import 'features/splash/splash_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/signup_screen.dart';
 import 'features/booking/booking_screen.dart';
+
 void main() {
   runApp(
     const ProviderScope(
@@ -139,7 +140,7 @@ final GoRouter _router = GoRouter(
       builder: (context, state) => const SignupScreen(),
     ),
 
-    // THE FIX: StatefulShellRoute (Auto-syncs navigation)
+    // StatefulShellRoute (Auto-syncs navigation)
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return MainScreen(navigationShell: navigationShell);
@@ -174,7 +175,9 @@ final GoRouter _router = GoRouter(
               builder: (context, state) => const TripPlannerScreen(),
             ),
           ],
-        ),StatefulShellBranch(
+        ),
+        // 4. Booking Tab
+        StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
               path: '/booking',
@@ -183,7 +186,7 @@ final GoRouter _router = GoRouter(
             ),
           ],
         ),
-        // 4. Profile Tab
+        // 5. Profile Tab
         StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
@@ -193,7 +196,6 @@ final GoRouter _router = GoRouter(
             ),
           ],
         ),
-
       ],
     ),
   ],
