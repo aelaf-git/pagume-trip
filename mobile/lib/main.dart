@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'core/constants/app_colors.dart';
 import 'features/home/home_screen.dart';
 import 'features/ai_chat/screens/chat_screen.dart';
@@ -8,7 +10,11 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/signup_screen.dart';
 
 void main() {
-  runApp(const PagumeTripApp());
+  runApp(
+    const ProviderScope(
+      child: PagumeTripApp(),
+    ),
+  );
 }
 
 class PagumeTripApp extends StatelessWidget {
