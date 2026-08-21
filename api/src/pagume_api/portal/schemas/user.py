@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, EmailStr, Field
 from pagume_api.portal.db.models.user import UserRole
 
@@ -17,6 +17,12 @@ class UserCreate(UserBase):
     password: str = Field(
         ..., min_length=8, description="Strong password with at least 8 characters"
     )
+    business_name: Optional[str] = None
+    category: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    details: Dict[str, Any] = Field(default_factory=dict)
+    documents: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class UserUpdate(BaseModel):

@@ -1,11 +1,17 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from pagume_api.portal.api.deps import get_current_active_user, get_db, require_role
+from pagume_api.portal.db.models.ops import (
+    Notification,
+    PortalBooking,
+    PortalPayment,
+    PortalReview,
+)
 from pagume_api.portal.db.models.provider import (
     DriverProfile,
     Hotel,
@@ -30,6 +36,14 @@ from pagume_api.portal.schemas.inventory import (
     VehicleCreate,
     VehicleResponse,
     VehicleUpdate,
+)
+from pagume_api.portal.schemas.ops import (
+    NotificationResponse,
+    PortalBookingCreate,
+    PortalBookingResponse,
+    PortalPaymentResponse,
+    PortalReviewResponse,
+    ProviderDashboardStats,
 )
 
 router = APIRouter()
@@ -411,3 +425,221 @@ async def upsert_driver_profile(
     await db.commit()
     await db.refresh(profile)
     return profile
+
+
+# ── Bookings ─────────────────────────────────────────────────────────────────
+
+
+@router.get("/bookings", response_model=List[PortalBookingResponse])
+async def list_my_bookings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    result = await db.execute(
+        select(PortalBooking).where(PortalBooking.provider_id == current_user.id)
+    )
+    return result.scalars().all()
+
+
+@router.post("/bookings", response_model=PortalBookingResponse)
+async def create_booking(
+    body: PortalBookingCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    booking = PortalBooking(
+        provider_id=current_user.id,
+        **body.model_dump(),
+    )
+    db.add(booking)
+    await db.commit()
+    await db.refresh(booking)
+    return booking
+
+
+@router.put("/bookings/{booking_id}/confirm", response_model=PortalBookingResponse)
+async def confirm_booking(
+    booking_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    booking = await _get_owned_booking(db, booking_id, current_user)
+    booking.booking_status = "CONFIRMED"
+    if booking.payment_status == "UNPAID":
+        booking.payment_status = "PAID"
+        db.add(
+            PortalPayment(
+                provider_id=current_user.id,
+                booking_id=booking.id,
+                amount=booking.price or 0,
+                currency="ETB",
+                status="COMPLETED",
+                method="portal",
+                reference=f"bk-{booking.id}",
+            )
+        )
+    await db.commit()
+    await db.refresh(booking)
+    return booking
+
+
+@router.put("/bookings/{booking_id}/cancel", response_model=PortalBookingResponse)
+async def cancel_booking(
+    booking_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    booking = await _get_owned_booking(db, booking_id, current_user)
+    booking.booking_status = "CANCELLED"
+    await db.commit()
+    await db.refresh(booking)
+    return booking
+
+
+async def _get_owned_booking(
+    db: AsyncSession, booking_id: int, user: User
+) -> PortalBooking:
+    result = await db.execute(select(PortalBooking).where(PortalBooking.id == booking_id))
+    booking = result.scalars().first()
+    if booking is None:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if user.role != UserRole.ADMIN and booking.provider_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your booking")
+    return booking
+
+
+# ── Payments / reviews / notifications / dashboard ───────────────────────────
+
+
+@router.get("/payments", response_model=List[PortalPaymentResponse])
+async def list_my_payments(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    result = await db.execute(
+        select(PortalPayment).where(PortalPayment.provider_id == current_user.id)
+    )
+    return result.scalars().all()
+
+
+@router.get("/reviews", response_model=List[PortalReviewResponse])
+async def list_my_reviews(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    result = await db.execute(
+        select(PortalReview).where(PortalReview.provider_id == current_user.id)
+    )
+    return result.scalars().all()
+
+
+@router.put("/reviews/{review_id}/hide", response_model=PortalReviewResponse)
+async def hide_review(
+    review_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    result = await db.execute(select(PortalReview).where(PortalReview.id == review_id))
+    review = result.scalars().first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    if review.provider_id != current_user.id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Not your review")
+    review.status = "HIDDEN"
+    await db.commit()
+    await db.refresh(review)
+    return review
+
+
+@router.get("/notifications", response_model=List[NotificationResponse])
+async def list_notifications(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    result = await db.execute(
+        select(Notification)
+        .where(Notification.user_id == current_user.id)
+        .order_by(Notification.id.desc())
+        .limit(50)
+    )
+    return result.scalars().all()
+
+
+@router.put("/notifications/{notification_id}/read", response_model=NotificationResponse)
+async def mark_notification_read(
+    notification_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    result = await db.execute(
+        select(Notification).where(Notification.id == notification_id)
+    )
+    note = result.scalars().first()
+    if not note or note.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    note.read = True
+    await db.commit()
+    await db.refresh(note)
+    return note
+
+
+@router.get("/dashboard/stats", response_model=ProviderDashboardStats)
+async def provider_dashboard_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    pid = current_user.id
+    bookings_total = (
+        await db.execute(
+            select(func.count())
+            .select_from(PortalBooking)
+            .where(PortalBooking.provider_id == pid)
+        )
+    ).scalar() or 0
+    bookings_pending = (
+        await db.execute(
+            select(func.count())
+            .select_from(PortalBooking)
+            .where(
+                PortalBooking.provider_id == pid,
+                PortalBooking.booking_status == "PENDING",
+            )
+        )
+    ).scalar() or 0
+    bookings_confirmed = (
+        await db.execute(
+            select(func.count())
+            .select_from(PortalBooking)
+            .where(
+                PortalBooking.provider_id == pid,
+                PortalBooking.booking_status == "CONFIRMED",
+            )
+        )
+    ).scalar() or 0
+    revenue = (
+        await db.execute(
+            select(func.coalesce(func.sum(PortalPayment.amount), 0.0)).where(
+                PortalPayment.provider_id == pid,
+                PortalPayment.status == "COMPLETED",
+            )
+        )
+    ).scalar() or 0.0
+    reviews = (
+        await db.execute(
+            select(PortalReview).where(
+                PortalReview.provider_id == pid,
+                PortalReview.status == "VISIBLE",
+            )
+        )
+    ).scalars().all()
+    avg = (
+        sum(r.rating for r in reviews) / len(reviews) if reviews else 0.0
+    )
+    return ProviderDashboardStats(
+        bookings_total=bookings_total,
+        bookings_pending=bookings_pending,
+        bookings_confirmed=bookings_confirmed,
+        revenue=float(revenue),
+        reviews_count=len(reviews),
+        average_rating=round(avg, 2),
+    )

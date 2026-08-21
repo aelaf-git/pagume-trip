@@ -56,13 +56,17 @@ alembic upgrade head
 
 Portal HTTP prefix: `/api/v1` (auth, providers, admin, public marketplace). Agent inventory remains under `/v1`.
 
+Portal persistence (beyond inventory): `providerprofile`, `providerdocument`, `portalbooking`, `portalpayment`, `portalreview`, `moderationitem`, `notification`, `platformsetting`, `agentrunlog`, plus destination fields `woreda` / historical / accessibility / seasonal. Migration: `003_portal_persistence`.
+
+Seed adds `admin@pagume.et` / `hotel@seed.et` (password `password123`) with a pending profile, sample booking/payment/review/notification when empty.
+
 | Role | Frontend portal |
 |------|-----------------|
 | `HOTEL_PROVIDER` | `/hotel` |
 | `TOUR_AGENCY` | `/agency` |
 | `CAR_RENTAL` | `/car-rental` |
 | `DRIVER` / `GUIDE` | `/driver` |
-| `ADMIN` | `/admin` |
+| `ADMIN` | `/admin` (login at `/admin/login`) |
 | (public) | `/marketplace` |
 
 Manual Postman prompts: [TEST_CASES.md](TEST_CASES.md).

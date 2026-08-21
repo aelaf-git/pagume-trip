@@ -239,3 +239,134 @@ def test_tour_vehicle_driver_and_public_after_verify(client):
 
     drivers = client.get("/api/v1/public/drivers", params={"location": "Bahir"})
     assert any(d["name"] == "Dawit" for d in drivers.json())
+
+
+def test_register_creates_provider_profile(client):
+    res = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "lodge@test.et",
+            "password": "password123",
+            "full_name": "Lake Lodge",
+            "role": "HOTEL_PROVIDER",
+            "business_name": "Lake Lodge",
+            "category": "hotel",
+            "phone": "+251911",
+            "address": "Gorgora",
+            "details": {"starRating": "3"},
+            "documents": [
+                {"doc_type": "businessLicense", "file_name": "lic.pdf", "file_size": 100}
+            ],
+        },
+    )
+    assert res.status_code == 200, res.text
+    token = _login(client, "lodge@test.et")
+    onboarding = client.get(
+        "/api/v1/auth/onboarding",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert onboarding.status_code == 200
+    assert onboarding.json()["status"] == "PENDING"
+
+
+def test_admin_destination_crud_and_provider_verify(client):
+    from sqlalchemy.orm import Session
+
+    engine = get_engine()
+    with Session(engine) as db:
+        db.add(
+            User(
+                email="admin2@test.et",
+                hashed_password=get_password_hash("password123"),
+                full_name="Admin",
+                role=UserRole.ADMIN,
+                is_active=True,
+                is_verified=True,
+            )
+        )
+        db.commit()
+
+    _register(client, "pending@test.et", "HOTEL_PROVIDER")
+    admin_token = _login(client, "admin2@test.et")
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    providers = client.get("/api/v1/admin/providers", headers=admin_headers)
+    assert providers.status_code == 200
+    assert any(p["email"] == "pending@test.et" for p in providers.json())
+    user_id = next(p["user_id"] for p in providers.json() if p["email"] == "pending@test.et")
+
+    verified = client.put(
+        f"/api/v1/admin/providers/{user_id}/status",
+        headers=admin_headers,
+        json={"status": "VERIFIED", "reason": "ok"},
+    )
+    assert verified.status_code == 200
+    assert verified.json()["status"] == "VERIFIED"
+
+    created = client.post(
+        "/api/v1/admin/destinations",
+        headers=admin_headers,
+        json={
+            "name": "Test Dest",
+            "description": "A place",
+            "region": "Amhara",
+            "zone": "North",
+            "woreda": "Woreda1",
+            "historical_info": "Old",
+            "accessibility": "Road",
+            "seasonal_info": "Dry",
+            "category": "nature",
+            "images": [],
+        },
+    )
+    assert created.status_code == 200, created.text
+    dest_id = created.json()["id"]
+
+    updated = client.put(
+        f"/api/v1/admin/destinations/{dest_id}",
+        headers=admin_headers,
+        json={"woreda": "Woreda2"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["woreda"] == "Woreda2"
+
+    deleted = client.delete(
+        f"/api/v1/admin/destinations/{dest_id}",
+        headers=admin_headers,
+    )
+    assert deleted.status_code == 200
+
+
+def test_booking_confirm_creates_payment(client):
+    _register(client, "booker@test.et", "HOTEL_PROVIDER")
+    token = _login(client, "booker@test.et")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    booking = client.post(
+        "/api/v1/providers/bookings",
+        headers=headers,
+        json={
+            "service_type": "room",
+            "service_name": "Suite",
+            "customer_name": "Guest",
+            "dates": "2026-10-01",
+            "price": 3000,
+        },
+    )
+    assert booking.status_code == 200, booking.text
+    bid = booking.json()["id"]
+
+    confirmed = client.put(
+        f"/api/v1/providers/bookings/{bid}/confirm",
+        headers=headers,
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["booking_status"] == "CONFIRMED"
+
+    payments = client.get("/api/v1/providers/payments", headers=headers)
+    assert payments.status_code == 200
+    assert len(payments.json()) >= 1
+
+    stats = client.get("/api/v1/providers/dashboard/stats", headers=headers)
+    assert stats.status_code == 200
+    assert stats.json()["bookings_confirmed"] >= 1

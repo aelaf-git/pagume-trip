@@ -83,3 +83,145 @@ def seed_all(session: Session) -> None:
                 images=[],
             ))
     session.flush()
+    _seed_portal_samples(session)
+
+
+def _seed_portal_samples(session: Session) -> None:
+    """Sample portal users, pending profile, booking, payment, notification."""
+    from datetime import datetime
+
+    from pagume_api.portal.core.security import get_password_hash
+    from pagume_api.portal.db.models.ops import (
+        AgentRunLog,
+        ModerationItem,
+        Notification,
+        PlatformSetting,
+        PortalBooking,
+        PortalPayment,
+        PortalReview,
+        ProviderProfile,
+    )
+    from pagume_api.portal.db.models.user import User, UserRole
+
+    if session.query(User).filter(User.email == "admin@pagume.et").first() is None:
+        session.add(
+            User(
+                email="admin@pagume.et",
+                hashed_password=get_password_hash("password123"),
+                full_name="Pagume Admin",
+                role=UserRole.ADMIN,
+                is_active=True,
+                is_verified=True,
+            )
+        )
+        session.flush()
+
+    hotel_user = session.query(User).filter(User.email == "hotel@seed.et").first()
+    if hotel_user is None:
+        hotel_user = User(
+            email="hotel@seed.et",
+            hashed_password=get_password_hash("password123"),
+            full_name="Seed Hotel",
+            role=UserRole.HOTEL_PROVIDER,
+            is_active=True,
+            is_verified=False,
+        )
+        session.add(hotel_user)
+        session.flush()
+        session.add(
+            ProviderProfile(
+                user_id=hotel_user.id,
+                business_name="Seed Lake Lodge",
+                category="hotel",
+                phone="+251900000001",
+                address="Gorgora",
+                details={"starRating": "4", "amenities": ["wifi"]},
+                status="PENDING",
+                registered_at=datetime.utcnow(),
+            )
+        )
+        session.add(
+            Notification(
+                user_id=hotel_user.id,
+                title="Registration received",
+                body="Your provider application is under review.",
+                read=False,
+            )
+        )
+        session.add(
+            PortalBooking(
+                provider_id=hotel_user.id,
+                service_type="room",
+                service_name="Deluxe Suite",
+                customer_name="Abebe Kebede",
+                customer_email="abebe@example.com",
+                start_date="2026-09-10",
+                end_date="2026-09-12",
+                dates="2026-09-10 – 2026-09-12",
+                price=12000,
+                booking_status="PENDING",
+                payment_status="UNPAID",
+            )
+        )
+        session.add(
+            PortalReview(
+                provider_id=hotel_user.id,
+                author_name="Sara",
+                rating=5,
+                comment="Great stay by the lake.",
+                status="VISIBLE",
+            )
+        )
+        session.add(
+            ModerationItem(
+                provider_id=hotel_user.id,
+                content_type="DESCRIPTION",
+                title="Seed Lake Lodge description",
+                description="Pending content review for seed hotel.",
+                status="PENDING_REVIEW",
+                provider_name="Seed Lake Lodge",
+                category="hotel",
+            )
+        )
+        session.flush()
+        session.add(
+            PortalPayment(
+                provider_id=hotel_user.id,
+                booking_id=None,
+                amount=5000,
+                currency="ETB",
+                status="COMPLETED",
+                method="mobile",
+                reference="seed-pay-1",
+            )
+        )
+
+    if (
+        session.query(PlatformSetting)
+        .filter(PlatformSetting.key == "platform_name")
+        .first()
+        is None
+    ):
+        session.add(PlatformSetting(key="platform_name", value={"text": "Pagume Trip"}))
+        session.add(
+            PlatformSetting(key="support_email", value={"text": "support@pagume.et"})
+        )
+        session.add(
+            PlatformSetting(key="marketplace_enabled", value={"enabled": True})
+        )
+
+    if session.query(AgentRunLog).count() == 0:
+        session.add(
+            AgentRunLog(
+                agent="supervisor",
+                task="Seed sample run",
+                input_params={"destination": "Gorgora"},
+                tools_called=["destination_lookup"],
+                tool_results=[{"tool": "destination_lookup", "result": "ok"}],
+                decisions=["Use verified inventory"],
+                duration_ms=1200,
+                token_usage={"total": 100},
+                status="completed",
+            )
+        )
+    session.flush()

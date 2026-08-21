@@ -4,8 +4,8 @@ This document provides frontend developers with the necessary details to consume
 
 ## Starting the Backend Locally
 
-To test the APIs locally alongside your Next.js/React frontend:
-1. Navigate to the backend folder: `cd portals/backend`
+To test the APIs locally alongside the React portals in `portals/`:
+1. Navigate to the API folder: `cd api`
 2. Sync the environment: `uv sync`
 3. Ensure PostgreSQL is running on `localhost:5432` with a database named `pagume_trip` (user: `postgres`, pass: `postgres`).
 4. Run migrations: `uv run alembic upgrade head`

@@ -41,6 +41,14 @@ cd api && pip install -e ".[dev]" && pagume-api
 cd agents && pagume-agents
 ```
 
+## Web portals
+
+Provider and admin UIs live in [`portals/`](portals/README.md).
+
+```bash
+cd portals && npm install && npm run dev
+```
+
 **Group 4 Room 1**
 
 | No. | Name                 | ID           |
