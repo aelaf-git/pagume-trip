@@ -1,0 +1,68 @@
+[33mcommit afd033e072d56e1144a0d33848109ca54a756bfd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32muat[m[33m)[m
+Author: Acriana06 <vcrivnv2010@gmail.com>
+Date:   Thu Aug 13 08:43:45 2026 +0300
+
+    Modify README
+
+[33mcommit e06a94d084113f8b060394e607baaa32d634ed77[m
+Author: Acriana06 <vcrivnv2010@gmail.com>
+Date:   Thu Aug 13 08:21:38 2026 +0300
+
+    Add complete Flutter mobile app to uat
+
+[33mcommit 8c7cd6a91bba8b2ffec0cf8e82c79b184c0dccc9[m
+Author: abigiya <abigiyaarega3@gmail.com>
+Date:   Wed Aug 12 16:33:58 2026 +0300
+
+    Deleted abigiya.py
+
+[33mcommit 12e0d8ba29d21c47190d441bd417118a99ce1254[m
+Merge: 262a34f fa3e7d1
+Author: abigiya3 <abigiyaarega3@gmail.com>
+Date:   Wed Aug 12 16:21:30 2026 +0300
+
+    Merge pull request #1 from aelaf-git/Abigiya
+    
+    create a file name abigiya.py
+
+[33mcommit fa3e7d190b00cacfb5bb2f67c7668be619470cfc[m
+Author: abigiya <abigiyaarega3@gmail.com>
+Date:   Wed Aug 12 16:09:47 2026 +0300
+
+    create a file name abigiya.py
+
+[33mcommit 262a34fd4e2549f20b2d5a8f7e4358f9ac4ab19d[m[33m ([m[1;32mmain[m[33m)[m
+Author: abigiya <abigiyaarega3@gmail.com>
+Date:   Wed Aug 12 15:39:13 2026 +0300
+
+    Deleted main.py and Modified README.md
+
+[33mcommit feeb37d2209d17c94e2aab8118415fcea5a8031f[m
+Author: abigiya <abigiyaarega3@gmail.com>
+Date:   Wed Aug 12 15:18:34 2026 +0300
+
+    Updated the README.md file and deleted .idle folder
+
+[33mcommit 24e371abd2e8b2a2e1e156166df456976ba565f0[m
+Author: Acriana06 <vcrivnv2010@gmail.com>
+Date:   Wed Aug 12 14:49:24 2026 +0300
+
+     Add mobile app subfolder and README
+
+[33mcommit 769a6a48b1052ac29a0e6b5755718e1a131fc1c6[m
+Author: Abel8866 <abel.endale-ug@aau.edu.et>
+Date:   Wed Aug 12 12:37:51 2026 +0300
+
+    Readme file updated
+
+[33mcommit 1f5ab2834157705ac011056bf472f3457ac320db[m
+Author: aelaf-git <aelafeskindir124@gmail.com>
+Date:   Mon Aug 10 11:04:25 2026 +0300
+
+    Add detailed README with project description, problem statement, solution, and team information
+
+[33mcommit 185ec3e301b009310b80737f3a98fabc6d2b5eaa[m
+Author: aelaf-git <aelafeskindir124@gmail.com>
+Date:   Fri Aug 7 11:23:54 2026 +0300
+
+    Added Readme file

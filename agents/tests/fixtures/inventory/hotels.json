@@ -1,0 +1,473 @@
+[
+  {
+    "id": "hotel_gorgora_resort_a",
+    "destination_id": "dest_gorgora",
+    "name": "Gorgora Lakeside Resort",
+    "description": "Comfortable family resort on Lake Tana with spacious rooms and lake views.",
+    "property_type": "resort",
+    "latitude": 12.235,
+    "longitude": 37.302,
+    "amenities": ["lake_view", "restaurant", "wifi", "parking"],
+    "rating": 4.5,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_resort_a_family",
+        "hotel_id": "hotel_gorgora_resort_a",
+        "room_type": "family",
+        "description": "Family suite sleeping six.",
+        "capacity": 6,
+        "beds": 3,
+        "amenities": ["ensuite", "lake_view"],
+        "nightly_price_etb": 4500,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_gorgora_hotel_b",
+    "destination_id": "dest_gorgora",
+    "name": "Gorgora Town Hotel",
+    "description": "Simple mid-range hotel in Gorgora town.",
+    "property_type": "hotel",
+    "latitude": 12.231,
+    "longitude": 37.298,
+    "amenities": ["restaurant", "wifi"],
+    "rating": 3.6,
+    "comfort_level": "standard",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_hotel_b_triple",
+        "hotel_id": "hotel_gorgora_hotel_b",
+        "room_type": "triple",
+        "description": "Two connecting triples for a family of six.",
+        "capacity": 6,
+        "beds": 3,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 3500,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_gorgora_lodge_c",
+    "destination_id": "dest_gorgora",
+    "name": "Lake Tana Lodge",
+    "description": "Upscale lodge with private gardens.",
+    "property_type": "lodge",
+    "latitude": 12.238,
+    "longitude": 37.305,
+    "amenities": ["spa", "restaurant", "wifi", "garden"],
+    "rating": 4.8,
+    "comfort_level": "luxury",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_lodge_c_villa",
+        "hotel_id": "hotel_gorgora_lodge_c",
+        "room_type": "villa",
+        "description": "Garden villa sleeping six.",
+        "capacity": 6,
+        "beds": 3,
+        "amenities": ["private_garden", "ensuite"],
+        "nightly_price_etb": 6000,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_lalibela_mountain",
+    "destination_id": "dest_lalibela",
+    "name": "Lalibela Mountain View Hotel",
+    "description": "Comfortable hotel walking distance from the churches.",
+    "property_type": "hotel",
+    "latitude": 12.033,
+    "longitude": 39.045,
+    "amenities": ["restaurant", "wifi", "church_view"],
+    "rating": 4.4,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_lalibela_double",
+        "hotel_id": "hotel_lalibela_mountain",
+        "room_type": "double",
+        "description": "Double room for two guests.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 4800,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_lalibela_budget",
+    "destination_id": "dest_lalibela",
+    "name": "Lalibela Guest House",
+    "description": "Simple guesthouse near the churches under 5,000 ETB per night.",
+    "property_type": "guesthouse",
+    "latitude": 12.029,
+    "longitude": 39.049,
+    "amenities": ["wifi", "breakfast"],
+    "rating": 3.8,
+    "comfort_level": "standard",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_lalibela_budget_double",
+        "hotel_id": "hotel_lalibela_budget",
+        "room_type": "double",
+        "description": "Double room for two guests.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 3200,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_gondar_castle",
+    "destination_id": "dest_gondar",
+    "name": "Gondar Castle View Hotel",
+    "description": "Comfortable hotel overlooking Fasil Ghebbi.",
+    "property_type": "hotel",
+    "latitude": 12.608,
+    "longitude": 37.47,
+    "amenities": ["restaurant", "wifi", "castle_view"],
+    "rating": 4.3,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_gondar_double",
+        "hotel_id": "hotel_gondar_castle",
+        "room_type": "double",
+        "description": "Double room for two.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 3800,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_gondar_budget",
+    "destination_id": "dest_gondar",
+    "name": "Gondar Piazza Guesthouse",
+    "description": "Simple guesthouse near the piazza, under 3,000 ETB per night.",
+    "property_type": "guesthouse",
+    "latitude": 12.61,
+    "longitude": 37.468,
+    "amenities": ["wifi", "breakfast"],
+    "rating": 3.7,
+    "comfort_level": "standard",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_gondar_budget_double",
+        "hotel_id": "hotel_gondar_budget",
+        "room_type": "double",
+        "description": "Double room for two.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 2200,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_bahirdar_lakeside",
+    "destination_id": "dest_bahir_dar",
+    "name": "Bahir Dar Lakeside Resort",
+    "description": "Comfortable resort on Lake Tana with boat access.",
+    "property_type": "resort",
+    "latitude": 11.6,
+    "longitude": 37.385,
+    "amenities": ["lake_view", "restaurant", "wifi", "pool"],
+    "rating": 4.6,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_bahirdar_family",
+        "hotel_id": "hotel_bahirdar_lakeside",
+        "room_type": "family",
+        "description": "Family room sleeping six.",
+        "capacity": 6,
+        "beds": 3,
+        "amenities": ["ensuite", "lake_view"],
+        "nightly_price_etb": 4200,
+        "currency": "ETB"
+      },
+      {
+        "id": "room_bahirdar_double",
+        "hotel_id": "hotel_bahirdar_lakeside",
+        "room_type": "double",
+        "description": "Double room for two.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 3900,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_axum_stelae",
+    "destination_id": "dest_axum",
+    "name": "Axum Stelae Hotel",
+    "description": "Comfortable hotel near the northern stelae field.",
+    "property_type": "hotel",
+    "latitude": 14.13,
+    "longitude": 38.72,
+    "amenities": ["restaurant", "wifi"],
+    "rating": 4.2,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_axum_double",
+        "hotel_id": "hotel_axum_stelae",
+        "room_type": "double",
+        "description": "Double room for two.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 4100,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_harar_jegol",
+    "destination_id": "dest_harar",
+    "name": "Harar Jegol Inn",
+    "description": "Small inn inside the walled city.",
+    "property_type": "guesthouse",
+    "latitude": 9.312,
+    "longitude": 42.117,
+    "amenities": ["wifi", "courtyard"],
+    "rating": 4.1,
+    "comfort_level": "standard",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_harar_double",
+        "hotel_id": "hotel_harar_jegol",
+        "room_type": "double",
+        "description": "Double room for two.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 2500,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_simien_lodge",
+    "destination_id": "dest_simien",
+    "name": "Simien Mountain Lodge",
+    "description": "Comfortable highland lodge near Debark for trekkers.",
+    "property_type": "lodge",
+    "latitude": 13.156,
+    "longitude": 37.898,
+    "amenities": ["restaurant", "wifi", "fireplace"],
+    "rating": 4.5,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_simien_twin",
+        "hotel_id": "hotel_simien_lodge",
+        "room_type": "twin",
+        "description": "Twin room for two trekkers.",
+        "capacity": 2,
+        "beds": 2,
+        "amenities": ["ensuite", "hot_water"],
+        "nightly_price_etb": 5500,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_addis_bole",
+    "destination_id": "dest_addis",
+    "name": "Bole Gateway Hotel",
+    "description": "Comfortable hotel near Bole International Airport.",
+    "property_type": "hotel",
+    "latitude": 8.995,
+    "longitude": 38.789,
+    "amenities": ["restaurant", "wifi", "airport_shuttle"],
+    "rating": 4.3,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "12:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_addis_double",
+        "hotel_id": "hotel_addis_bole",
+        "room_type": "double",
+        "description": "Double room for two.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 4500,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_omo_jinka",
+    "destination_id": "dest_omo",
+    "name": "Jinka Eco Lodge",
+    "description": "Comfortable lodge used as a base for Omo Valley visits.",
+    "property_type": "lodge",
+    "latitude": 5.785,
+    "longitude": 36.57,
+    "amenities": ["restaurant", "wifi", "garden"],
+    "rating": 4.0,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_omo_twin",
+        "hotel_id": "hotel_omo_jinka",
+        "room_type": "twin",
+        "description": "Twin room for two.",
+        "capacity": 2,
+        "beds": 2,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 3600,
+        "currency": "ETB"
+      }
+    ]
+  }
+]

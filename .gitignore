@@ -1,0 +1,14 @@
+convert_docx.py
+/venv
+Pagume Trip Functional Requirements Specification (FRS).docx
+mobile.md
+UI.md
+web.md
+claude.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.env

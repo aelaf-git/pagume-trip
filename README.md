@@ -32,7 +32,22 @@ Pagume Trip addresses these problems by providing:
 - **Booking and payment management** for tourism services.
 - **Personalized and agentic travel assistance** instead of a simple question-and-answer chatbot.
 
-## Team Name
+## Backend
+
+The Pagume API lives in [`api/`](api/README.md) and uses **local PostgreSQL**. Agents in [`agents/`](agents/README.md) read and write inventory through that HTTP API (never SQL).
+
+```bash
+cd api && pip install -e ".[dev]" && pagume-api
+cd agents && pagume-agents
+```
+
+## Web portals
+
+Provider and admin UIs live in [`portals/`](portals/README.md).
+
+```bash
+cd portals && npm install && npm run dev
+```
 
 **Group 4 Room 1**
 
