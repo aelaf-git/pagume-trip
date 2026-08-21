@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render the Pagume multi-agent graph as an image.
 
-Builds the compiled LangGraph (mock inventory, no LLM) and writes a PNG of
+Builds the compiled LangGraph (test fixture inventory, no LLM) and writes a PNG of
 node relationships to the repository root.
 
 Usage (from the repo root):

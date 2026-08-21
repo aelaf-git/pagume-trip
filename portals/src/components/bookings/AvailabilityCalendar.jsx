@@ -1,14 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import Card from "../common/Card";
 import Badge from "../common/Badge";
 import Button from "../common/Button";
-import { CALENDAR_STATUS_COLORS } from "../../constants/bookingOptions";
+import {
+  CALENDAR_STATUS_COLORS,
+  CALENDAR_STATUS_OPTIONS,
+} from "../../constants/bookingOptions";
 import * as bookingService from "../../services/bookingService";
 
 function dateKey(d) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function addDays(d, n) {
@@ -17,44 +30,184 @@ function addDays(d, n) {
   return result;
 }
 
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MENU_EST_HEIGHT = 200;
+const MENU_WIDTH = 144; // w-36
 
 function formatDateShort(d) {
   return `${d.getDate()} ${d.toLocaleString("default", { month: "short" })}`;
 }
 
-function StatusCell({ status, onClick }) {
-  const colorClass = CALENDAR_STATUS_COLORS[status] ?? "bg-gray-50 text-gray-500 border-gray-200";
+function statusLabel(status) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`min-h-[2.25rem] w-full rounded-lg border px-1 py-1 text-xs font-medium transition-colors cursor-pointer ${colorClass}`}
-      title={`Click to toggle — currently ${status}`}
-    >
-      {status === "available" && "Available"}
-      {status === "blocked" && "Blocked"}
-      {status === "reserved" && "Reserved"}
-    </button>
+    CALENDAR_STATUS_OPTIONS.find((o) => o.value === status)?.label ||
+    status ||
+    "Available"
   );
 }
 
-function SeatsCell({ status, onClick }) {
-  const seats = status === "reserved" ? "Full" : status === "blocked" ? "—" : "Open";
-  const tone = status === "available" ? "green" : status === "reserved" ? "amber" : "gray";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="min-h-[2.25rem] w-full cursor-pointer"
+/** Portal menu so overflow-x-auto on the calendar table does not clip it. */
+function StatusMenuPortal({ open, anchorRef, menuRef, children }) {
+  const [style, setStyle] = useState(null);
+
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current) {
+      setStyle(null);
+      return undefined;
+    }
+
+    function place() {
+      const rect = anchorRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < MENU_EST_HEIGHT && rect.top > MENU_EST_HEIGHT;
+      let left = rect.left + rect.width / 2 - MENU_WIDTH / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - MENU_WIDTH - 8));
+      setStyle({
+        position: "fixed",
+        top: openUp ? rect.top - 4 : rect.bottom + 4,
+        left,
+        width: MENU_WIDTH,
+        transform: openUp ? "translateY(-100%)" : undefined,
+        zIndex: 60,
+      });
+    }
+
+    place();
+    window.addEventListener("resize", place);
+    // capture scroll from overflow containers
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, anchorRef]);
+
+  if (!open || !style) return null;
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      role="menu"
+      style={style}
+      className="rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
     >
-      <Badge tone={tone}>{seats}</Badge>
-    </button>
+      {children}
+    </div>,
+    document.body
+  );
+}
+
+function StatusCell({ status, open, onOpen, onSelect, onClose, menuRef }) {
+  const anchorRef = useRef(null);
+  const colorClass =
+    CALENDAR_STATUS_COLORS[status] ?? "bg-gray-50 text-gray-500 border-gray-200";
+
+  return (
+    <div className="relative">
+      <button
+        ref={anchorRef}
+        type="button"
+        onClick={onOpen}
+        className={`min-h-[2.25rem] w-full rounded-lg border px-1 py-1 text-xs font-medium transition-colors cursor-pointer ${colorClass}`}
+        title="Click to change availability"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {statusLabel(status)}
+      </button>
+      <StatusMenuPortal open={open} anchorRef={anchorRef} menuRef={menuRef}>
+        <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+          Set status
+        </p>
+        {CALENDAR_STATUS_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            role="menuitem"
+            disabled={opt.value === status}
+            onClick={() => onSelect(opt.value)}
+            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-50 disabled:opacity-40 ${
+              opt.value === status ? "font-semibold text-brand-700" : "text-gray-700"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full border ${CALENDAR_STATUS_COLORS[opt.value] || ""}`}
+            />
+            {opt.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="mt-1 w-full border-t border-gray-100 px-3 py-1.5 text-left text-xs text-gray-400 hover:bg-gray-50"
+          onClick={onClose}
+        >
+          Cancel
+        </button>
+      </StatusMenuPortal>
+    </div>
+  );
+}
+
+function SeatsCell({ status, open, onOpen, onSelect, onClose, menuRef }) {
+  const anchorRef = useRef(null);
+  const seats =
+    status === "booked" || status === "reserved"
+      ? "Full"
+      : status === "blocked"
+        ? "—"
+        : "Open";
+  const tone =
+    status === "available"
+      ? "green"
+      : status === "booked" || status === "reserved"
+        ? "amber"
+        : "gray";
+
+  return (
+    <div className="relative">
+      <button
+        ref={anchorRef}
+        type="button"
+        onClick={onOpen}
+        className="min-h-[2.25rem] w-full cursor-pointer"
+        title="Click to change availability"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <Badge tone={tone}>{seats}</Badge>
+      </button>
+      <StatusMenuPortal open={open} anchorRef={anchorRef} menuRef={menuRef}>
+        {CALENDAR_STATUS_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            role="menuitem"
+            onClick={() => onSelect(opt.value)}
+            className="flex w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
+          >
+            {opt.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="w-full border-t border-gray-100 px-3 py-1.5 text-left text-xs text-gray-400"
+          onClick={onClose}
+        >
+          Cancel
+        </button>
+      </StatusMenuPortal>
+    </div>
   );
 }
 
 function DriverTimeline({ ranges }) {
-  const startDate = new Date(2026, 7, 18);
+  const startDate = startOfToday();
   const totalDays = 14;
   const end = addDays(startDate, totalDays);
 
@@ -69,7 +222,7 @@ function DriverTimeline({ ranges }) {
 
   return (
     <Card>
-      <div className="flex items-center gap-2 mb-4">
+      <div className="mb-4 flex items-center gap-2">
         <CalendarDays className="h-4 w-4 text-gray-400" />
         <p className="text-sm font-medium text-gray-700">Availability Ranges</p>
       </div>
@@ -86,7 +239,7 @@ function DriverTimeline({ ranges }) {
                 </p>
                 <div className="relative h-6 rounded bg-gray-100">
                   <div
-                    className="absolute top-0 h-full rounded bg-brand-500/20 border border-brand-400"
+                    className="absolute top-0 h-full rounded border border-brand-400 bg-brand-500/20"
                     style={{ left, width }}
                   />
                 </div>
@@ -104,9 +257,12 @@ export default function AvailabilityCalendar() {
   const providerType = user?.providerType;
   const [calendarData, setCalendarData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [offset, setOffset] = useState(0);
   const [notice, setNotice] = useState(null);
+  const [picker, setPicker] = useState(null); // { itemId, date }
   const noticeTimer = useRef(null);
+  const menuRef = useRef(null);
 
   const showNotice = (message) => {
     setNotice(message);
@@ -116,31 +272,62 @@ export default function AvailabilityCalendar() {
 
   useEffect(() => () => clearTimeout(noticeTimer.current), []);
 
+  useEffect(() => {
+    if (!picker) return;
+    function handleClickOutside(e) {
+      const inMenu = menuRef.current?.contains(e.target);
+      const onTrigger = e.target.closest?.('[aria-haspopup="menu"]');
+      if (!inMenu && !onTrigger) {
+        setPicker(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [picker]);
+
   const loadCalendar = useCallback(async () => {
-    const data = await bookingService.getAvailabilityCalendar(providerType);
-    setCalendarData(data);
-    setLoading(false);
+    try {
+      const data = await bookingService.getAvailabilityCalendar(providerType);
+      setCalendarData(data);
+    } catch {
+      setCalendarData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [providerType]);
 
   useEffect(() => {
     loadCalendar();
   }, [loadCalendar]);
 
-  const startDate = addDays(new Date(2026, 7, 18), offset);
+  const startDate = addDays(startOfToday(), offset);
   const DAYS_COUNT = 14;
   const dates = Array.from({ length: DAYS_COUNT }, (_, i) => addDays(startDate, i));
+  const todayKey = dateKey(startOfToday());
 
-  const handleToggle = async (itemId, date) => {
-    await bookingService.toggleAvailability(providerType, itemId, date);
-    setCalendarData((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId || !item.dates) return item;
-        const current = item.dates[date];
-        const next = current === "available" ? "blocked" : current === "blocked" ? "available" : current;
-        return { ...item, dates: { ...item.dates, [date]: next } };
-      })
-    );
-    showNotice("Availability updated.");
+  const handleSelectStatus = async (itemId, date, status) => {
+    setSaving(true);
+    setPicker(null);
+    try {
+      const updated = await bookingService.setAvailabilityStatus(
+        providerType,
+        itemId,
+        date,
+        status
+      );
+      if (updated) {
+        setCalendarData((prev) =>
+          prev.map((item) => (String(item.id) === String(itemId) ? updated : item))
+        );
+      } else {
+        await loadCalendar();
+      }
+      showNotice(`Marked ${date} as ${statusLabel(status)}.`);
+    } catch (e) {
+      showNotice(e.message || "Could not update availability.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -155,7 +342,7 @@ export default function AvailabilityCalendar() {
     return (
       <div className="space-y-4">
         {notice && (
-          <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {notice}
           </div>
         )}
@@ -167,7 +354,7 @@ export default function AvailabilityCalendar() {
   return (
     <div className="space-y-4">
       {notice && (
-        <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
           {notice}
         </div>
       )}
@@ -176,34 +363,64 @@ export default function AvailabilityCalendar() {
         title="Availability"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setOffset((o) => o - DAYS_COUNT)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOffset((o) => o - DAYS_COUNT)}
+              disabled={saving}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-xs text-gray-500 min-w-[120px] text-center">
+            <span className="min-w-[120px] text-center text-xs text-gray-500">
               {formatDateShort(dates[0])} – {formatDateShort(dates[dates.length - 1])}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setOffset((o) => o + DAYS_COUNT)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOffset((o) => o + DAYS_COUNT)}
+              disabled={saving}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         }
       >
+        <p className="mb-3 text-xs text-gray-500">
+          Click a day to set it as Available, Booked, Reserved, or Blocked. Changes save to the
+          database.
+        </p>
+        <div className="mb-4 flex flex-wrap gap-3 text-xs text-gray-500">
+          {CALENDAR_STATUS_OPTIONS.map((opt) => (
+            <span key={opt.value} className="inline-flex items-center gap-1.5">
+              <span
+                className={`inline-block h-3 w-3 rounded border ${CALENDAR_STATUS_COLORS[opt.value]}`}
+              />
+              {opt.label}
+            </span>
+          ))}
+        </div>
+
         {calendarData.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No inventory items to show on the calendar.</p>
+          <p className="py-8 text-center text-sm text-gray-400">
+            No inventory items to show on the calendar.
+          </p>
         ) : (
-          <div className="overflow-x-auto -mx-5 px-5">
+          <div className="-mx-5 overflow-x-auto px-5">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-white pb-2 pr-3 font-medium text-gray-500 min-w-[120px]">
+                  <th className="sticky left-0 z-10 min-w-[120px] bg-white pb-2 pr-3 font-medium text-gray-500">
                     Item
                   </th>
                   {dates.map((d) => {
-                    const isToday = dateKey(d) === "2026-08-18";
+                    const key = dateKey(d);
+                    const isToday = key === todayKey;
                     return (
                       <th
-                        key={dateKey(d)}
-                        className={`pb-2 px-1 font-medium text-center whitespace-nowrap ${isToday ? "text-brand-600" : "text-gray-400"}`}
+                        key={key}
+                        className={`whitespace-nowrap px-1 pb-2 text-center font-medium ${
+                          isToday ? "text-brand-600" : "text-gray-400"
+                        }`}
                       >
                         <div>{DAY_NAMES[d.getDay()]}</div>
                         <div className="text-[10px]">{formatDateShort(d)}</div>
@@ -215,24 +432,34 @@ export default function AvailabilityCalendar() {
               <tbody>
                 {calendarData.map((item) => (
                   <tr key={item.id} className="border-t border-gray-100">
-                    <td className="sticky left-0 z-10 bg-white py-2 pr-3 font-medium text-gray-800 text-xs">
+                    <td className="sticky left-0 z-10 bg-white py-2 pr-3 text-xs font-medium text-gray-800">
                       {item.label}
                     </td>
                     {dates.map((d) => {
                       const key = dateKey(d);
                       const status = item.dates?.[key] ?? "available";
+                      const isOpen =
+                        picker?.itemId === String(item.id) && picker?.date === key;
+                      const cellProps = {
+                        status,
+                        open: isOpen,
+                        menuRef,
+                        onOpen: () =>
+                          setPicker(
+                            isOpen
+                              ? null
+                              : { itemId: String(item.id), date: key }
+                          ),
+                        onClose: () => setPicker(null),
+                        onSelect: (next) =>
+                          handleSelectStatus(item.id, key, next),
+                      };
                       return (
-                        <td key={key} className="py-2 px-1">
+                        <td key={key} className="px-1 py-2">
                           {providerType === "agency" ? (
-                            <SeatsCell
-                              status={status}
-                              onClick={() => handleToggle(item.id, key)}
-                            />
+                            <SeatsCell {...cellProps} />
                           ) : (
-                            <StatusCell
-                              status={status}
-                              onClick={() => handleToggle(item.id, key)}
-                            />
+                            <StatusCell {...cellProps} />
                           )}
                         </td>
                       );

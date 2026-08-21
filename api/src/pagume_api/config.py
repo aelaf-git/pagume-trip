@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     seed_on_startup: bool = True
+    cloudinary_url: str = ""
 
 
 @lru_cache

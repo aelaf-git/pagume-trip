@@ -1,4 +1,4 @@
-"""HTTP adapter for the future Pagume API. Same protocol as the mock client."""
+"""HTTP adapter for the Pagume API. Same protocol as the test mock client."""
 
 from __future__ import annotations
 
@@ -26,7 +26,8 @@ class HttpInventoryClient:
         if not self.base_url:
             raise NotImplementedError(
                 "PAGUME_API_BASE_URL is not configured. "
-                "Use MockInventoryClient until the Pagume API exists."
+                "Start the Pagume API and set PAGUME_API_BASE_URL "
+                "(e.g. http://127.0.0.1:8000)."
             )
         return self.base_url
 

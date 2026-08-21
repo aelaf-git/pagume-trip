@@ -13,6 +13,8 @@ class Hotel(Base):
     latitude = Column(Float)
     longitude = Column(Float)
     contact_details = Column(String)
+    cover_image = Column(String, nullable=True)
+    profile_picture = Column(String, nullable=True)
     images = Column(JSON, default=list)
     amenities = Column(JSON, default=list)
     policies = Column(JSON, default=dict)

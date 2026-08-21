@@ -1,21 +1,21 @@
 import { useState, useRef, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { getNotifications, markRead } from "../../services/notificationService";
+import { queryKeys, STALE_NOTIFICATIONS_MS } from "../../lib/queryKeys";
 
 export default function NotificationsDropdown() {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState([]);
   const ref = useRef(null);
 
-  const load = () => {
-    getNotifications()
-      .then(setItems)
-      .catch(() => setItems([]));
-  };
+  const notificationsQuery = useQuery({
+    queryKey: queryKeys.notifications,
+    queryFn: () => getNotifications(),
+    staleTime: STALE_NOTIFICATIONS_MS,
+  });
 
-  useEffect(() => {
-    load();
-  }, []);
+  const items = notificationsQuery.data ?? [];
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -27,7 +27,7 @@ export default function NotificationsDropdown() {
 
   const unread = items.filter((n) => !n.read).length;
 
-  const onOpen = async () => {
+  const onOpen = () => {
     setOpen((o) => !o);
   };
 
@@ -35,7 +35,7 @@ export default function NotificationsDropdown() {
     if (!n.read) {
       try {
         await markRead(n.id);
-        await load();
+        await queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
       } catch {
         /* ignore */
       }

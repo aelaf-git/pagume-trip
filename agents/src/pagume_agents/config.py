@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     )
     llm_model: str = GROQ_DEFAULT_MODEL
 
-    inventory_client: Literal["mock", "http"] = "mock"
-    pagume_api_base_url: str = ""
+    inventory_client: Literal["http"] = "http"
+    pagume_api_base_url: str = "http://127.0.0.1:8000"
 
     use_llm: bool = False
 

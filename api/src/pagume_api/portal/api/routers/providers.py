@@ -20,6 +20,11 @@ from pagume_api.portal.db.models.provider import (
     Vehicle,
 )
 from pagume_api.portal.db.models.user import User, UserRole
+from pagume_api.portal.sync_agent import (
+    sync_portal_hotel_availability,
+    sync_portal_tour_availability,
+    sync_portal_vehicle_availability,
+)
 from pagume_api.portal.schemas.inventory import (
     AvailabilityUpdate,
     DriverProfileResponse,
@@ -55,6 +60,39 @@ def _apply_update(obj, data: dict) -> None:
             setattr(obj, key, value)
 
 
+async def _sync_hotel_rooms_to_agent(db: AsyncSession, hotel_id: int) -> None:
+    def _run(sync_session) -> None:
+        hotel = sync_session.get(Hotel, hotel_id)
+        if hotel is None:
+            return
+        rooms = list(
+            sync_session.scalars(select(Room).where(Room.hotel_id == hotel_id)).all()
+        )
+        sync_portal_hotel_availability(sync_session, hotel, rooms)
+
+    await db.run_sync(_run)
+
+
+async def _sync_vehicle_to_agent(db: AsyncSession, vehicle_id: int) -> None:
+    def _run(sync_session) -> None:
+        vehicle = sync_session.get(Vehicle, vehicle_id)
+        if vehicle is None:
+            return
+        sync_portal_vehicle_availability(sync_session, vehicle)
+
+    await db.run_sync(_run)
+
+
+async def _sync_tour_to_agent(db: AsyncSession, tour_id: int) -> None:
+    def _run(sync_session) -> None:
+        tour = sync_session.get(TourPackage, tour_id)
+        if tour is None:
+            return
+        sync_portal_tour_availability(sync_session, tour)
+
+    await db.run_sync(_run)
+
+
 # ── Hotels ──────────────────────────────────────────────────────────────────
 
 
@@ -68,6 +106,7 @@ async def create_hotel(
     db.add(hotel)
     await db.flush()
     hotel_id = hotel.id
+    await _sync_hotel_rooms_to_agent(db, hotel_id)
     await db.commit()
     result = await db.execute(
         select(Hotel).options(selectinload(Hotel.rooms)).where(Hotel.id == hotel_id)
@@ -110,6 +149,8 @@ async def update_hotel(
 ):
     hotel = await _get_owned_hotel(db, hotel_id, current_user)
     _apply_update(hotel, hotel_in.model_dump(exclude_unset=True))
+    await db.flush()
+    await _sync_hotel_rooms_to_agent(db, hotel.id)
     await db.commit()
     result = await db.execute(
         select(Hotel).options(selectinload(Hotel.rooms)).where(Hotel.id == hotel_id)
@@ -153,6 +194,8 @@ async def create_room(
     await _get_owned_hotel(db, hotel_id, current_user)
     room = Room(**room_in.model_dump(), hotel_id=hotel_id)
     db.add(room)
+    await db.flush()
+    await _sync_hotel_rooms_to_agent(db, hotel_id)
     await db.commit()
     await db.refresh(room)
     return room
@@ -182,6 +225,8 @@ async def update_room(
         raise HTTPException(status_code=404, detail="Room not found")
     await _get_owned_hotel(db, room.hotel_id, current_user)
     _apply_update(room, room_in.model_dump(exclude_unset=True))
+    await db.flush()
+    await _sync_hotel_rooms_to_agent(db, room.hotel_id)
     await db.commit()
     await db.refresh(room)
     return room
@@ -200,6 +245,8 @@ async def update_room_availability(
         raise HTTPException(status_code=404, detail="Room not found")
     await _get_owned_hotel(db, room.hotel_id, current_user)
     room.availability_dates = body.availability_dates
+    await db.flush()
+    await _sync_hotel_rooms_to_agent(db, room.hotel_id)
     await db.commit()
     await db.refresh(room)
     return room
@@ -231,6 +278,8 @@ async def create_tour(
 ):
     tour = TourPackage(**tour_in.model_dump(), agency_id=current_user.id)
     db.add(tour)
+    await db.flush()
+    await _sync_tour_to_agent(db, tour.id)
     await db.commit()
     await db.refresh(tour)
     return tour
@@ -257,6 +306,8 @@ async def update_tour(
 ):
     tour = await _get_owned_tour(db, tour_id, current_user)
     _apply_update(tour, tour_in.model_dump(exclude_unset=True))
+    await db.flush()
+    await _sync_tour_to_agent(db, tour.id)
     await db.commit()
     await db.refresh(tour)
     return tour
@@ -271,6 +322,8 @@ async def update_tour_availability(
 ):
     tour = await _get_owned_tour(db, tour_id, current_user)
     tour.availability_dates = body.availability_dates
+    await db.flush()
+    await _sync_tour_to_agent(db, tour.id)
     await db.commit()
     await db.refresh(tour)
     return tour
@@ -308,6 +361,8 @@ async def create_vehicle(
 ):
     vehicle = Vehicle(**vehicle_in.model_dump(), rental_company_id=current_user.id)
     db.add(vehicle)
+    await db.flush()
+    await _sync_vehicle_to_agent(db, vehicle.id)
     await db.commit()
     await db.refresh(vehicle)
     return vehicle
@@ -334,6 +389,8 @@ async def update_vehicle(
 ):
     vehicle = await _get_owned_vehicle(db, vehicle_id, current_user)
     _apply_update(vehicle, vehicle_in.model_dump(exclude_unset=True))
+    await db.flush()
+    await _sync_vehicle_to_agent(db, vehicle.id)
     await db.commit()
     await db.refresh(vehicle)
     return vehicle
@@ -348,6 +405,8 @@ async def update_vehicle_availability(
 ):
     vehicle = await _get_owned_vehicle(db, vehicle_id, current_user)
     vehicle.availability_dates = body.availability_dates
+    await db.flush()
+    await _sync_vehicle_to_agent(db, vehicle.id)
     await db.commit()
     await db.refresh(vehicle)
     return vehicle

@@ -5,7 +5,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import NotificationsDropdown from "./NotificationsDropdown";
 
 export default function Header({ portalName }) {
-  const { user, logout } = useAuth();
+  const { user, logout, avatarUrl } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const ref = useRef(null);
@@ -45,9 +45,17 @@ export default function Header({ portalName }) {
             onClick={() => setMenuOpen((o) => !o)}
             className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1 hover:bg-gray-100"
           >
-            <div className="h-8 w-8 rounded-full bg-brand-500 text-white flex items-center justify-center text-sm font-semibold">
-              {initials || <User className="h-4 w-4" />}
-            </div>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt=""
+                className="h-8 w-8 rounded-full object-cover ring-1 ring-gray-200"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-brand-500 text-white flex items-center justify-center text-sm font-semibold">
+                {initials || <User className="h-4 w-4" />}
+              </div>
+            )}
             <div className="text-left hidden sm:block">
               <p className="text-sm font-medium text-gray-800 leading-tight">{user?.name}</p>
               <p className="text-xs text-gray-400 capitalize leading-tight">{user?.role}</p>

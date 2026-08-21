@@ -75,24 +75,29 @@ export async function getAvailabilityCalendar(providerType) {
   return [];
 }
 
-export async function toggleAvailability(providerType, itemId, date) {
-  // Persist by updating availability_dates on the inventory entity
+export async function setAvailabilityStatus(providerType, itemId, date, status) {
+  const allowed = new Set(["available", "booked", "reserved", "blocked"]);
+  if (!allowed.has(status)) {
+    throw new Error(`Invalid availability status: ${status}`);
+  }
+
+  const apply = (list) => {
+    const map = new Map();
+    for (const entry of list || []) {
+      if (typeof entry === "string") map.set(entry, "available");
+      else if (entry?.date) map.set(entry.date, entry.status || "available");
+    }
+    map.set(date, status);
+    return [...map.entries()].map(([d, s]) => ({ date: d, status: s }));
+  };
+
   if (providerType === "hotel") {
     const rooms = await inventoryService.getRooms();
     const room = rooms.find((r) => String(r.id) === String(itemId));
     if (!room) return null;
-    const dates = { ...(room.availabilityDatesMap || {}) };
-    // Rebuild from list
-    let list = [...(room.availabilityDates || [])];
-    const idx = list.findIndex((d) => d === date || d?.date === date);
-    if (idx >= 0) {
-      list.splice(idx, 1);
-    } else {
-      list.push(date);
-    }
     const updated = await inventoryService.updateRoom(room.id, {
       ...room,
-      availabilityDates: list,
+      availabilityDates: apply(room.availabilityDates),
     });
     return calendarFromInventory([
       { ...updated, name: updated.roomType || updated.room_type },
@@ -102,13 +107,9 @@ export async function toggleAvailability(providerType, itemId, date) {
     const packages = await inventoryService.getPackages();
     const pkg = packages.find((p) => String(p.id) === String(itemId));
     if (!pkg) return null;
-    let list = [...(pkg.availabilityDates || [])];
-    const idx = list.findIndex((d) => d === date || d?.date === date);
-    if (idx >= 0) list.splice(idx, 1);
-    else list.push(date);
     const updated = await inventoryService.updatePackage(pkg.id, {
       ...pkg,
-      availabilityDates: list,
+      availabilityDates: apply(pkg.availabilityDates),
     });
     return calendarFromInventory([updated])[0];
   }
@@ -116,19 +117,24 @@ export async function toggleAvailability(providerType, itemId, date) {
     const vehicles = await inventoryService.getVehicles();
     const v = vehicles.find((x) => String(x.id) === String(itemId));
     if (!v) return null;
-    let list = [...(v.availabilityDates || [])];
-    const idx = list.findIndex((d) => d === date || d?.date === date);
-    if (idx >= 0) list.splice(idx, 1);
-    else list.push(date);
     const updated = await inventoryService.updateVehicle(v.id, {
       ...v,
-      availabilityDates: list,
+      availabilityDates: apply(v.availabilityDates),
     });
     return calendarFromInventory([
       { ...updated, name: `${updated.make} ${updated.model}`.trim() },
     ])[0];
   }
   return null;
+}
+
+/** @deprecated Prefer setAvailabilityStatus — toggles available ↔ blocked */
+export async function toggleAvailability(providerType, itemId, date) {
+  const calendar = await getAvailabilityCalendar(providerType);
+  const item = calendar.find((i) => String(i.id) === String(itemId));
+  const current = item?.dates?.[date] ?? "available";
+  const next = current === "available" ? "blocked" : "available";
+  return setAvailabilityStatus(providerType, itemId, date, next);
 }
 
 export async function getBookings() {
@@ -149,14 +155,53 @@ export async function cancelBooking(id) {
 export async function getAnalytics() {
   const stats = await api.get("/providers/dashboard/stats");
   return {
-    metrics: {
-      totalBookings: stats.bookings_total,
-      pendingBookings: stats.bookings_pending,
-      confirmedBookings: stats.bookings_confirmed,
-      revenue: stats.revenue,
-      reviews: stats.reviews_count,
-      averageRating: stats.average_rating,
-    },
+    metrics: [
+      {
+        key: "bookingRequests",
+        label: "Total bookings",
+        value: stats.bookings_total ?? 0,
+        trend: "—",
+        trendUp: true,
+      },
+      {
+        key: "profileViews",
+        label: "Pending bookings",
+        value: stats.bookings_pending ?? 0,
+        trend: "—",
+        trendUp: true,
+      },
+      {
+        key: "searchAppearances",
+        label: "Confirmed bookings",
+        value: stats.bookings_confirmed ?? 0,
+        trend: "—",
+        trendUp: true,
+      },
+      {
+        key: "revenue",
+        label: "Earnings",
+        value: stats.revenue ?? 0,
+        prefix: "ETB ",
+        trend: "—",
+        trendUp: true,
+        highlight: true,
+      },
+      {
+        key: "aiRecommendations",
+        label: "Reviews",
+        value: stats.reviews_count ?? 0,
+        trend: "—",
+        trendUp: true,
+      },
+      {
+        key: "conversionRate",
+        label: "Average rating",
+        value: stats.average_rating ?? 0,
+        suffix: "/5",
+        trend: "—",
+        trendUp: true,
+      },
+    ],
     monthlyRevenue: [],
     monthlyBookings: [],
   };

@@ -26,9 +26,18 @@ router = APIRouter()
 
 
 def _has_date(dates: list | None, date: str | None) -> bool:
+    """True if inventory lists this date as available (or has no date filter)."""
     if not date:
         return True
-    return bool(dates) and date in dates
+    if not dates:
+        return False
+    for entry in dates:
+        if isinstance(entry, str) and entry == date:
+            return True
+        if isinstance(entry, dict) and entry.get("date") == date:
+            status = (entry.get("status") or "available").lower()
+            return status == "available"
+    return False
 
 
 def _amenities_match(amenities: list | None, needed: str | None) -> bool:

@@ -17,6 +17,15 @@ function RunRow({ run }) {
   const [expanded, setExpanded] = useState(false)
   const agentConf = AGENT_TYPES[run.agent]
   const statusConf = RUN_STATUSES[run.status]
+  const tokenCount =
+    typeof run.tokenUsage === "number"
+      ? run.tokenUsage
+      : Number(run.tokenUsage?.total ?? run.tokenUsage?.prompt ?? 0)
+  const tools = Array.isArray(run.toolsCalled) ? run.toolsCalled : []
+  const toolResults = Array.isArray(run.toolResults) ? run.toolResults : []
+  const decisionsText = Array.isArray(run.decisions)
+    ? run.decisions.join(" ")
+    : run.decisions || "—"
 
   return (
     <div className="border-b border-gray-50 last:border-0">
@@ -30,14 +39,14 @@ function RunRow({ run }) {
         <span className="text-xs font-mono text-gray-400 w-20 shrink-0">{run.id}</span>
         <span
           className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0"
-          style={{ backgroundColor: agentConf?.color + "15", color: agentConf?.color }}
+          style={{ backgroundColor: (agentConf?.color || "#666") + "15", color: agentConf?.color || "#666" }}
         >
           {agentConf?.label || run.agent}
         </span>
         <span className="text-sm text-gray-800 truncate flex-1">{run.task}</span>
-        <Badge tone={statusConf?.tone}>{statusConf?.label}</Badge>
+        <Badge tone={statusConf?.tone || "gray"}>{statusConf?.label || run.status}</Badge>
         <span className="text-xs text-gray-500 w-16 text-right shrink-0">{run.duration}</span>
-        <span className="text-xs text-gray-400 w-20 text-right shrink-0">{run.tokenUsage.toLocaleString()} tok</span>
+        <span className="text-xs text-gray-400 w-20 text-right shrink-0">{tokenCount.toLocaleString()} tok</span>
       </div>
 
       {expanded && (
@@ -52,9 +61,9 @@ function RunRow({ run }) {
           <div>
             <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Tools Called</h5>
             <div className="flex flex-wrap gap-2">
-              {run.toolsCalled.map((tool) => (
-                <span key={tool} className="text-xs bg-brand-50 text-brand-700 border border-brand-200 rounded-full px-2.5 py-0.5 font-mono">
-                  {tool}
+              {tools.map((tool, i) => (
+                <span key={`${tool}-${i}`} className="text-xs bg-brand-50 text-brand-700 border border-brand-200 rounded-full px-2.5 py-0.5 font-mono">
+                  {typeof tool === "string" ? tool : JSON.stringify(tool)}
                 </span>
               ))}
             </div>
@@ -63,10 +72,10 @@ function RunRow({ run }) {
           <div>
             <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Tool Results</h5>
             <div className="space-y-1.5">
-              {run.toolResults.map((tr, i) => (
+              {toolResults.map((tr, i) => (
                 <div key={i} className="flex gap-2 text-xs">
-                  <span className="font-mono text-brand-600 shrink-0">{tr.tool}:</span>
-                  <span className="text-gray-600">{tr.result}</span>
+                  <span className="font-mono text-brand-600 shrink-0">{tr.tool || "tool"}:</span>
+                  <span className="text-gray-600">{typeof tr.result === "string" ? tr.result : JSON.stringify(tr.result)}</span>
                 </div>
               ))}
             </div>
@@ -74,14 +83,14 @@ function RunRow({ run }) {
 
           <div>
             <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Decisions</h5>
-            <p className="text-xs text-gray-600">{run.decisions}</p>
+            <p className="text-xs text-gray-600">{decisionsText}</p>
           </div>
 
           <div className="flex gap-6 text-xs text-gray-500">
             <span><Clock className="inline h-3.5 w-3.5 mr-1" />{run.duration}</span>
-            <span><Zap className="inline h-3.5 w-3.5 mr-1" />{run.tokenUsage.toLocaleString()} tokens</span>
-            <span>Approval: {run.userApproval}</span>
-            <span>Outcome: {run.outcome}</span>
+            <span><Zap className="inline h-3.5 w-3.5 mr-1" />{tokenCount.toLocaleString()} tokens</span>
+            <span>Approval: {run.userApproval || "—"}</span>
+            <span>Outcome: {run.outcome || "—"}</span>
           </div>
         </div>
       )}
@@ -96,9 +105,14 @@ export default function AgentRunLog() {
   const [search, setSearch] = useState("")
 
   const loadRuns = useCallback(async () => {
-    const data = await getAgentRuns()
-    setRuns(data)
-    setLoading(false)
+    try {
+      const data = await getAgentRuns()
+      setRuns(Array.isArray(data) ? data : [])
+    } catch {
+      setRuns([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {

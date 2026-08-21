@@ -11,7 +11,9 @@ from pagume_agents.models.booking import Booking, BookingItem, BookingStatus
 from pagume_agents.models.inventory import Destination, Hotel, HotelRoom, TourPackage, Vehicle
 from pagume_agents.models.trip import ItineraryItem, Trip
 
-DEFAULT_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "mock"
+DEFAULT_DATA_DIR = (
+    Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "inventory"
+)
 
 
 def _load_json(path: Path) -> list[dict]:
@@ -37,7 +39,7 @@ def _date_range(check_in: str, check_out: str) -> list[str]:
 
 
 class MockInventoryClient:
-    """In-memory verified inventory. Empty searches return [] — never invented rows."""
+    """In-memory inventory for unit tests only. Runtime agents use HttpInventoryClient."""
 
     def __init__(self, data_dir: Path | None = None, empty: bool = False) -> None:
         self.data_dir = data_dir or DEFAULT_DATA_DIR

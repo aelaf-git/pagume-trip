@@ -83,9 +83,18 @@ export default function ProviderAnalytics() {
   const [loading, setLoading] = useState(true);
 
   const loadAnalytics = useCallback(async () => {
-    const data = await bookingService.getAnalytics();
-    setAnalytics(data);
-    setLoading(false);
+    try {
+      const data = await bookingService.getAnalytics();
+      setAnalytics(data);
+    } catch {
+      setAnalytics({
+        metrics: [],
+        monthlyRevenue: [],
+        monthlyBookings: [],
+      });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -109,7 +118,7 @@ export default function ProviderAnalytics() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {analytics.metrics.map((metric) => (
+        {(analytics.metrics || []).map((metric) => (
           <MetricCard key={metric.key} metric={metric} />
         ))}
       </div>

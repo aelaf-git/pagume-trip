@@ -1,17 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, XCircle, ClipboardList } from "lucide-react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Badge from "../common/Badge";
 import { BOOKING_STATUSES, PAYMENT_STATUSES } from "../../constants/bookingOptions";
 import * as bookingService from "../../services/bookingService";
+import { queryKeys, STALE_BOOKINGS_MS } from "../../lib/queryKeys";
 
 export default function BookingManagement() {
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [actionId, setActionId] = useState(null);
   const [notice, setNotice] = useState(null);
   const noticeTimer = useRef(null);
+
+  const bookingsQuery = useQuery({
+    queryKey: queryKeys.bookings,
+    queryFn: () => bookingService.getBookings(),
+    staleTime: STALE_BOOKINGS_MS,
+  });
+
+  const bookings = bookingsQuery.data ?? [];
+  const loading = bookingsQuery.isLoading;
 
   const showNotice = (message) => {
     setNotice(message);
@@ -19,24 +29,15 @@ export default function BookingManagement() {
     noticeTimer.current = setTimeout(() => setNotice(null), 3000);
   };
 
-  useEffect(() => () => clearTimeout(noticeTimer.current), []);
-
-  const loadBookings = useCallback(async () => {
-    const data = await bookingService.getBookings();
-    setBookings(data);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadBookings();
-  }, [loadBookings]);
+  const invalidateBookings = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.bookings });
 
   const handleConfirm = async (id) => {
     setActionId(id);
     try {
       await bookingService.confirmBooking(id);
       showNotice(`Booking ${id} confirmed.`);
-      await loadBookings();
+      await invalidateBookings();
     } finally {
       setActionId(null);
     }
@@ -47,7 +48,7 @@ export default function BookingManagement() {
     try {
       await bookingService.cancelBooking(id);
       showNotice(`Booking ${id} cancelled.`);
-      await loadBookings();
+      await invalidateBookings();
     } finally {
       setActionId(null);
     }
@@ -63,7 +64,9 @@ export default function BookingManagement() {
 
       <Card>
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-gray-400">Loading bookings…</div>
+          <div className="flex items-center justify-center py-12 text-sm text-gray-400">
+            Loading bookings…
+          </div>
         ) : bookings.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center">
             <ClipboardList className="h-10 w-10 text-gray-300 mb-3" />
@@ -86,8 +89,10 @@ export default function BookingManagement() {
               </thead>
               <tbody>
                 {bookings.map((booking) => {
-                  const statusConfig = BOOKING_STATUSES[booking.bookingStatus] ?? BOOKING_STATUSES.DRAFT;
-                  const paymentConfig = PAYMENT_STATUSES[booking.paymentStatus] ?? PAYMENT_STATUSES.UNPAID;
+                  const statusConfig =
+                    BOOKING_STATUSES[booking.bookingStatus] ?? BOOKING_STATUSES.DRAFT;
+                  const paymentConfig =
+                    PAYMENT_STATUSES[booking.paymentStatus] ?? PAYMENT_STATUSES.UNPAID;
                   const isPending = booking.bookingStatus === "PENDING";
                   const isProcessing = actionId === booking.id;
 
@@ -96,7 +101,9 @@ export default function BookingManagement() {
                       <td className="px-4 py-3 font-medium text-gray-900">{booking.id}</td>
                       <td className="px-4 py-3 text-gray-700">{booking.serviceName}</td>
                       <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{booking.dates}</td>
-                      <td className="px-4 py-3 text-gray-700">ETB {booking.price.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-gray-700">
+                        ETB {booking.price.toLocaleString()}
+                      </td>
                       <td className="px-4 py-3 text-gray-700">{booking.customerName}</td>
                       <td className="px-4 py-3">
                         <Badge tone={paymentConfig.tone}>{paymentConfig.label}</Badge>

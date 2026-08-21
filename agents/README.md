@@ -64,4 +64,10 @@ pytest
 
 ## Inventory source
 
-By default agents call the Pagume API (`INVENTORY_CLIENT=http`, `PAGUME_API_BASE_URL=http://127.0.0.1:8000`). Start `../api` first. Set `INVENTORY_CLIENT=mock` to use local JSON instead.
+Agents **always** load inventory from the Pagume API (database), never from local JSON:
+
+```
+PAGUME_API_BASE_URL=http://127.0.0.1:8000
+```
+
+Start `../api` (`pagume-api`) before running agents. Unit tests may still use `MockInventoryClient` with fixtures under `tests/fixtures/inventory/` — that path is not used at runtime.

@@ -32,6 +32,8 @@ function mapHotel(h) {
     latitude: h.latitude,
     longitude: h.longitude,
     contactDetails: h.contact_details ?? "",
+    coverImage: h.cover_image ?? "",
+    profilePicture: h.profile_picture ?? "",
     images: h.images ?? [],
     amenities: h.amenities ?? [],
     policies: h.policies ?? {},
@@ -123,6 +125,8 @@ async function ensureHotelId() {
     name: "My Property",
     description: "",
     address: "",
+    cover_image: null,
+    profile_picture: null,
     images: [],
     amenities: [],
     policies: {},
@@ -147,6 +151,8 @@ export async function createHotel(data) {
     latitude: data.latitude ? Number(data.latitude) : null,
     longitude: data.longitude ? Number(data.longitude) : null,
     contact_details: data.contactDetails,
+    cover_image: data.coverImage || null,
+    profile_picture: data.profilePicture || null,
     images: data.images ?? [],
     amenities: data.amenities ?? [],
     policies: data.policies ?? {},
@@ -158,22 +164,45 @@ export async function createHotel(data) {
 }
 
 export async function updateHotel(id, data) {
-  const row = await api.put(`/providers/hotels/${id}`, {
+  const body = {
     name: data.name,
     description: data.description,
     address: data.address,
-    latitude: data.latitude != null ? Number(data.latitude) : undefined,
-    longitude: data.longitude != null ? Number(data.longitude) : undefined,
+    latitude: data.latitude != null && data.latitude !== "" ? Number(data.latitude) : undefined,
+    longitude: data.longitude != null && data.longitude !== "" ? Number(data.longitude) : undefined,
     contact_details: data.contactDetails,
-    images: data.images,
     amenities: data.amenities,
     policies: data.policies,
     check_in_time: data.checkInTime,
     check_out_time: data.checkOutTime,
     cancellation_policy: data.cancellationPolicy,
-  });
+  };
+  if (data.coverImage !== undefined) body.cover_image = data.coverImage || "";
+  if (data.profilePicture !== undefined) body.profile_picture = data.profilePicture || "";
+  if (data.images !== undefined) body.images = data.images;
+  const row = await api.put(`/providers/hotels/${id}`, body);
   return mapHotel(row);
 }
+
+/** Persist only image fields so uploads survive a page reload without full form save. */
+export async function updateHotelImages(id, { coverImage, profilePicture, images }) {
+  const body = {};
+  if (coverImage !== undefined) body.cover_image = coverImage || "";
+  if (profilePicture !== undefined) body.profile_picture = profilePicture || "";
+  if (images !== undefined) body.images = images;
+  const row = await api.put(`/providers/hotels/${id}`, body);
+  return mapHotel(row);
+}
+
+/** Upload an image to Cloudinary via the API. kind: cover | profile | gallery */
+export async function uploadHotelImage(file, kind = "gallery") {
+  const form = new FormData();
+  form.append("file", file);
+  const row = await api.postForm(`/uploads/images?kind=${encodeURIComponent(kind)}`, form);
+  return row.url;
+}
+
+export { ensureHotelId };
 
 export async function getRooms() {
   const hotelId = await ensureHotelId();

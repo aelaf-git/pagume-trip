@@ -11,16 +11,19 @@ export function useLocalStorage(key, initialValue) {
   });
 
   const setStoredValue = (nextValue) => {
-    setValue(nextValue);
-    try {
-      if (nextValue === null || nextValue === undefined) {
-        window.localStorage.removeItem(key);
-      } else {
-        window.localStorage.setItem(key, JSON.stringify(nextValue));
+    setValue((prev) => {
+      const resolved = typeof nextValue === "function" ? nextValue(prev) : nextValue;
+      try {
+        if (resolved === null || resolved === undefined) {
+          window.localStorage.removeItem(key);
+        } else {
+          window.localStorage.setItem(key, JSON.stringify(resolved));
+        }
+      } catch {
+        // ignore write errors (e.g. private browsing)
       }
-    } catch {
-      // ignore write errors (e.g. private browsing)
-    }
+      return resolved;
+    });
   };
 
   return [value, setStoredValue];

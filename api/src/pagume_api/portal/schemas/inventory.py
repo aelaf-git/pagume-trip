@@ -1,6 +1,8 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
+
+AvailabilityEntry = Union[str, Dict[str, Any]]
 
 
 class RoomBase(BaseModel):
@@ -12,7 +14,7 @@ class RoomBase(BaseModel):
     images: List[str] = Field(default_factory=list)
     price_per_night: float = Field(..., gt=0)
     is_available: bool = True
-    availability_dates: List[str] = Field(default_factory=list)
+    availability_dates: List[AvailabilityEntry] = Field(default_factory=list)
 
 
 class RoomCreate(RoomBase):
@@ -28,7 +30,7 @@ class RoomUpdate(BaseModel):
     images: Optional[List[str]] = None
     price_per_night: Optional[float] = None
     is_available: Optional[bool] = None
-    availability_dates: Optional[List[str]] = None
+    availability_dates: Optional[List[AvailabilityEntry]] = None
 
 
 class RoomResponse(RoomBase):
@@ -45,6 +47,8 @@ class HotelBase(BaseModel):
     latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
     contact_details: Optional[str] = Field(None, max_length=255)
+    cover_image: Optional[str] = Field(None, max_length=1000)
+    profile_picture: Optional[str] = Field(None, max_length=1000)
     images: List[str] = Field(default_factory=list)
     amenities: List[str] = Field(default_factory=list)
     policies: Dict[str, Any] = Field(default_factory=dict)
@@ -64,6 +68,8 @@ class HotelUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     contact_details: Optional[str] = None
+    cover_image: Optional[str] = None
+    profile_picture: Optional[str] = None
     images: Optional[List[str]] = None
     amenities: Optional[List[str]] = None
     policies: Optional[Dict[str, Any]] = None
@@ -96,7 +102,7 @@ class TourPackageBase(BaseModel):
     activities: List[str] = Field(default_factory=list)
     guide: Optional[str] = ""
     images: List[str] = Field(default_factory=list)
-    availability_dates: List[str] = Field(default_factory=list)
+    availability_dates: List[AvailabilityEntry] = Field(default_factory=list)
     cancellation_policy: Optional[str] = Field(None, max_length=1000)
 
 
@@ -120,7 +126,7 @@ class TourPackageUpdate(BaseModel):
     activities: Optional[List[str]] = None
     guide: Optional[str] = None
     images: Optional[List[str]] = None
-    availability_dates: Optional[List[str]] = None
+    availability_dates: Optional[List[AvailabilityEntry]] = None
     cancellation_policy: Optional[str] = None
 
 
@@ -149,7 +155,7 @@ class VehicleBase(BaseModel):
     pickup_locations: List[str] = Field(default_factory=list)
     dropoff_locations: List[str] = Field(default_factory=list)
     rental_policies: Optional[str] = ""
-    availability_dates: List[str] = Field(default_factory=list)
+    availability_dates: List[AvailabilityEntry] = Field(default_factory=list)
 
 
 class VehicleCreate(VehicleBase):
@@ -174,7 +180,7 @@ class VehicleUpdate(BaseModel):
     pickup_locations: Optional[List[str]] = None
     dropoff_locations: Optional[List[str]] = None
     rental_policies: Optional[str] = None
-    availability_dates: Optional[List[str]] = None
+    availability_dates: Optional[List[AvailabilityEntry]] = None
 
 
 class VehicleResponse(VehicleBase):
@@ -227,4 +233,4 @@ class DriverProfileResponse(DriverProfileBase):
 
 
 class AvailabilityUpdate(BaseModel):
-    availability_dates: List[str] = Field(default_factory=list)
+    availability_dates: List[AvailabilityEntry] = Field(default_factory=list)

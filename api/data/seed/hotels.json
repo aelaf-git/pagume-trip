@@ -469,5 +469,289 @@
         "currency": "ETB"
       }
     ]
+  },
+  {
+    "id": "hotel_bahirdar_budget_inn",
+    "destination_id": "dest_bahir_dar",
+    "name": "Tana Shore Inn",
+    "description": "Simple budget hotel near the Bahir Dar waterfront for short stays.",
+    "property_type": "hotel",
+    "latitude": 11.598,
+    "longitude": 37.385,
+    "amenities": ["wifi", "parking"],
+    "rating": 3.2,
+    "comfort_level": "standard",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_bahirdar_budget_double",
+        "hotel_id": "hotel_bahirdar_budget_inn",
+        "room_type": "double",
+        "description": "Compact double with city view.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite"],
+        "nightly_price_etb": 1800,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_addis_skylon_luxury",
+    "destination_id": "dest_addis",
+    "name": "Skylon Addis Suites",
+    "description": "Upscale city hotel with spa, fine dining, and executive floors.",
+    "property_type": "hotel",
+    "latitude": 9.018,
+    "longitude": 38.752,
+    "amenities": ["spa", "restaurant", "wifi", "gym", "concierge"],
+    "rating": 4.8,
+    "comfort_level": "luxury",
+    "check_in_time": "15:00",
+    "check_out_time": "12:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_addis_skylon_suite",
+        "hotel_id": "hotel_addis_skylon_luxury",
+        "room_type": "suite",
+        "description": "Executive suite with lounge access.",
+        "capacity": 3,
+        "beds": 1,
+        "amenities": ["ensuite", "minibar", "city_view"],
+        "nightly_price_etb": 12000,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_bahirdar_palm_resort",
+    "destination_id": "dest_bahir_dar",
+    "name": "Palm Bay Resort",
+    "description": "Family lakeside resort with pools and boat pier access.",
+    "property_type": "resort",
+    "latitude": 11.605,
+    "longitude": 37.402,
+    "amenities": ["pool", "lake_view", "restaurant", "wifi", "kids_club"],
+    "rating": 4.1,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_palm_resort_family",
+        "hotel_id": "hotel_bahirdar_palm_resort",
+        "room_type": "family",
+        "description": "Garden villa for a family of four.",
+        "capacity": 4,
+        "beds": 2,
+        "amenities": ["ensuite", "lake_view", "terrace"],
+        "nightly_price_etb": 6200,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_gorgora_royal_resort",
+    "destination_id": "dest_gorgora",
+    "name": "Royal Tana Resort",
+    "description": "Luxury waterfront resort with private beach and spa pavilions.",
+    "property_type": "resort",
+    "latitude": 12.241,
+    "longitude": 37.31,
+    "amenities": ["spa", "private_beach", "restaurant", "wifi", "boat_transfers"],
+    "rating": 4.9,
+    "comfort_level": "luxury",
+    "check_in_time": "15:00",
+    "check_out_time": "12:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14",
+      "2026-09-15"
+    ],
+    "rooms": [
+      {
+        "id": "room_royal_resort_villa",
+        "hotel_id": "hotel_gorgora_royal_resort",
+        "room_type": "villa",
+        "description": "Private lake villa with plunge pool.",
+        "capacity": 4,
+        "beds": 2,
+        "amenities": ["ensuite", "lake_view", "butler"],
+        "nightly_price_etb": 18000,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_simien_camp_lodge",
+    "destination_id": "dest_simien",
+    "name": "Escarpment Camp Lodge",
+    "description": "Basic trekker lodge with shared dining and mountain views.",
+    "property_type": "lodge",
+    "latitude": 13.19,
+    "longitude": 38.05,
+    "amenities": ["restaurant", "fireplace"],
+    "rating": 3.5,
+    "comfort_level": "standard",
+    "check_in_time": "14:00",
+    "check_out_time": "10:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_simien_camp_twin",
+        "hotel_id": "hotel_simien_camp_lodge",
+        "room_type": "twin",
+        "description": "Simple twin cabin for two trekkers.",
+        "capacity": 2,
+        "beds": 2,
+        "amenities": ["shared_bath"],
+        "nightly_price_etb": 2200,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_omo_river_luxury_lodge",
+    "destination_id": "dest_omo",
+    "name": "Omo River Luxury Lodge",
+    "description": "High-end eco lodge with guided community visits and gourmet dining.",
+    "property_type": "lodge",
+    "latitude": 5.79,
+    "longitude": 36.55,
+    "amenities": ["restaurant", "wifi", "garden", "guided_tours", "spa"],
+    "rating": 4.7,
+    "comfort_level": "luxury",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_omo_luxury_suite",
+        "hotel_id": "hotel_omo_river_luxury_lodge",
+        "room_type": "suite",
+        "description": "Canvas suite with outdoor shower.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite", "deck", "minibar"],
+        "nightly_price_etb": 14000,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_lalibela_pilgrim_gh",
+    "destination_id": "dest_lalibela",
+    "name": "Pilgrim Rest Guesthouse",
+    "description": "Affordable guesthouse walking distance from the rock churches.",
+    "property_type": "guesthouse",
+    "latitude": 12.028,
+    "longitude": 39.045,
+    "amenities": ["wifi", "breakfast"],
+    "rating": 3.4,
+    "comfort_level": "standard",
+    "check_in_time": "13:00",
+    "check_out_time": "10:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_lalibela_gh_double",
+        "hotel_id": "hotel_lalibela_pilgrim_gh",
+        "room_type": "double",
+        "description": "Homely double with shared courtyard.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["shared_bath"],
+        "nightly_price_etb": 1200,
+        "currency": "ETB"
+      }
+    ]
+  },
+  {
+    "id": "hotel_axum_heritage_gh",
+    "destination_id": "dest_axum",
+    "name": "Heritage Courtyard Guesthouse",
+    "description": "Comfortable boutique guesthouse near the stelae park with garden dining.",
+    "property_type": "guesthouse",
+    "latitude": 14.13,
+    "longitude": 38.72,
+    "amenities": ["wifi", "breakfast", "garden", "restaurant"],
+    "rating": 4.4,
+    "comfort_level": "comfortable",
+    "check_in_time": "14:00",
+    "check_out_time": "11:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_axum_gh_deluxe",
+        "hotel_id": "hotel_axum_heritage_gh",
+        "room_type": "deluxe",
+        "description": "Deluxe room overlooking the courtyard garden.",
+        "capacity": 2,
+        "beds": 1,
+        "amenities": ["ensuite", "garden_view"],
+        "nightly_price_etb": 3800,
+        "currency": "ETB"
+      }
+    ]
   }
 ]

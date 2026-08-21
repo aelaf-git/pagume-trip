@@ -225,3 +225,324 @@ def _seed_portal_samples(session: Session) -> None:
             )
         )
     session.flush()
+    _seed_portal_catalog_hotels(session)
+
+
+# Portal hotel providers (login like Blue Nile). Password for all: password123
+_PORTAL_CATALOG_HOTELS = [
+    {
+        "email": "tana.shore@seed.et",
+        "full_name": "Tana Shore Inn",
+        "category": "hotel",
+        "quality": "standard",
+        "hotel": {
+            "name": "Tana Shore Inn",
+            "description": "Simple budget hotel near the Bahir Dar waterfront for short stays.",
+            "address": "Waterfront Road, Bahir Dar, Amhara, Ethiopia",
+            "latitude": 11.598,
+            "longitude": 37.385,
+            "contact_details": "+251911100001 · stay@tanashore.et",
+            "amenities": ["Free WiFi", "Parking"],
+            "check_in_time": "14:00",
+            "check_out_time": "11:00",
+            "cancellation_policy": "Free cancellation up to 24 hours before check-in.",
+        },
+        "rooms": [
+            {
+                "room_type": "double",
+                "description": "Compact double with city view.",
+                "capacity": 2,
+                "beds": 1,
+                "amenities": ["Ensuite"],
+                "price_per_night": 1800,
+            }
+        ],
+    },
+    {
+        "email": "skylon.addis@seed.et",
+        "full_name": "Skylon Addis Suites",
+        "category": "hotel",
+        "quality": "luxury",
+        "hotel": {
+            "name": "Skylon Addis Suites",
+            "description": "Upscale city hotel with spa, fine dining, and executive floors.",
+            "address": "Bole Atlas, Addis Ababa, Ethiopia",
+            "latitude": 9.018,
+            "longitude": 38.752,
+            "contact_details": "+251911100002 · concierge@skylonaddis.et",
+            "amenities": ["Spa", "Restaurant", "Free WiFi", "Gym", "Concierge"],
+            "check_in_time": "15:00",
+            "check_out_time": "12:00",
+            "cancellation_policy": "Free cancellation up to 72 hours before check-in.",
+        },
+        "rooms": [
+            {
+                "room_type": "suite",
+                "description": "Executive suite with lounge access.",
+                "capacity": 3,
+                "beds": 1,
+                "amenities": ["Ensuite", "Minibar", "City View"],
+                "price_per_night": 12000,
+            }
+        ],
+    },
+    {
+        "email": "palm.bay@seed.et",
+        "full_name": "Palm Bay Resort",
+        "category": "resort",
+        "quality": "comfortable",
+        "hotel": {
+            "name": "Palm Bay Resort",
+            "description": "Family lakeside resort with pools and boat pier access.",
+            "address": "Lake Tana Shore, Bahir Dar, Amhara, Ethiopia",
+            "latitude": 11.605,
+            "longitude": 37.402,
+            "contact_details": "+251911100003 · hello@palmbay.et",
+            "amenities": ["Pool", "Lake View", "Restaurant", "Free WiFi", "Kids Club"],
+            "check_in_time": "14:00",
+            "check_out_time": "11:00",
+            "cancellation_policy": "Free cancellation up to 48 hours before check-in.",
+        },
+        "rooms": [
+            {
+                "room_type": "family",
+                "description": "Garden villa for a family of four.",
+                "capacity": 4,
+                "beds": 2,
+                "amenities": ["Ensuite", "Lake View", "Terrace"],
+                "price_per_night": 6200,
+            }
+        ],
+    },
+    {
+        "email": "royal.tana@seed.et",
+        "full_name": "Royal Tana Resort",
+        "category": "resort",
+        "quality": "luxury",
+        "hotel": {
+            "name": "Royal Tana Resort",
+            "description": "Luxury waterfront resort with private beach and spa pavilions.",
+            "address": "Northern Shore, Gorgora, Amhara, Ethiopia",
+            "latitude": 12.241,
+            "longitude": 37.31,
+            "contact_details": "+251911100004 · vip@royaltana.et",
+            "amenities": ["Spa", "Private Beach", "Restaurant", "Free WiFi", "Boat Transfers"],
+            "check_in_time": "15:00",
+            "check_out_time": "12:00",
+            "cancellation_policy": "Free cancellation up to 7 days before check-in.",
+        },
+        "rooms": [
+            {
+                "room_type": "villa",
+                "description": "Private lake villa with plunge pool.",
+                "capacity": 4,
+                "beds": 2,
+                "amenities": ["Ensuite", "Lake View", "Butler"],
+                "price_per_night": 18000,
+            }
+        ],
+    },
+    {
+        "email": "escarpment@seed.et",
+        "full_name": "Escarpment Camp Lodge",
+        "category": "lodge",
+        "quality": "standard",
+        "hotel": {
+            "name": "Escarpment Camp Lodge",
+            "description": "Basic trekker lodge with shared dining and mountain views.",
+            "address": "Near Debark, Simien Mountains, Amhara, Ethiopia",
+            "latitude": 13.19,
+            "longitude": 38.05,
+            "contact_details": "+251911100005 · camp@escarpment.et",
+            "amenities": ["Restaurant", "Fireplace"],
+            "check_in_time": "14:00",
+            "check_out_time": "10:00",
+            "cancellation_policy": "Free cancellation up to 24 hours before check-in.",
+        },
+        "rooms": [
+            {
+                "room_type": "twin",
+                "description": "Simple twin cabin for two trekkers.",
+                "capacity": 2,
+                "beds": 2,
+                "amenities": ["Shared Bath"],
+                "price_per_night": 2200,
+            }
+        ],
+    },
+    {
+        "email": "omo.luxury@seed.et",
+        "full_name": "Omo River Luxury Lodge",
+        "category": "lodge",
+        "quality": "luxury",
+        "hotel": {
+            "name": "Omo River Luxury Lodge",
+            "description": "High-end eco lodge with guided community visits and gourmet dining.",
+            "address": "Near Jinka, Omo Valley, South Ethiopia",
+            "latitude": 5.79,
+            "longitude": 36.55,
+            "contact_details": "+251911100006 · stay@omoriver.et",
+            "amenities": ["Restaurant", "Free WiFi", "Garden", "Guided Tours", "Spa"],
+            "check_in_time": "14:00",
+            "check_out_time": "11:00",
+            "cancellation_policy": "Free cancellation up to 5 days before check-in.",
+        },
+        "rooms": [
+            {
+                "room_type": "suite",
+                "description": "Canvas suite with outdoor shower.",
+                "capacity": 2,
+                "beds": 1,
+                "amenities": ["Ensuite", "Deck", "Minibar"],
+                "price_per_night": 14000,
+            }
+        ],
+    },
+    {
+        "email": "pilgrim.lalibela@seed.et",
+        "full_name": "Pilgrim Rest Guesthouse",
+        "category": "guesthouse",
+        "quality": "standard",
+        "hotel": {
+            "name": "Pilgrim Rest Guesthouse",
+            "description": "Affordable guesthouse walking distance from the rock churches.",
+            "address": "Church Road, Lalibela, Amhara, Ethiopia",
+            "latitude": 12.028,
+            "longitude": 39.045,
+            "contact_details": "+251911100007 · rest@pilgrimlalibela.et",
+            "amenities": ["Free WiFi", "Breakfast"],
+            "check_in_time": "13:00",
+            "check_out_time": "10:00",
+            "cancellation_policy": "Free cancellation up to 24 hours before check-in.",
+        },
+        "rooms": [
+            {
+                "room_type": "double",
+                "description": "Homely double with shared courtyard.",
+                "capacity": 2,
+                "beds": 1,
+                "amenities": ["Shared Bath"],
+                "price_per_night": 1200,
+            }
+        ],
+    },
+    {
+        "email": "heritage.axum@seed.et",
+        "full_name": "Heritage Courtyard Guesthouse",
+        "category": "guesthouse",
+        "quality": "comfortable",
+        "hotel": {
+            "name": "Heritage Courtyard Guesthouse",
+            "description": "Comfortable boutique guesthouse near the stelae park with garden dining.",
+            "address": "Stelae Park Road, Axum, Tigray, Ethiopia",
+            "latitude": 14.13,
+            "longitude": 38.72,
+            "contact_details": "+251911100008 · stay@heritageaxum.et",
+            "amenities": ["Free WiFi", "Breakfast", "Garden", "Restaurant"],
+            "check_in_time": "14:00",
+            "check_out_time": "11:00",
+            "cancellation_policy": "Free cancellation up to 48 hours before check-in.",
+        },
+        "rooms": [
+            {
+                "room_type": "deluxe",
+                "description": "Deluxe room overlooking the courtyard garden.",
+                "capacity": 2,
+                "beds": 1,
+                "amenities": ["Ensuite", "Garden View"],
+                "price_per_night": 3800,
+            }
+        ],
+    },
+]
+
+
+def _seed_portal_catalog_hotels(session: Session) -> None:
+    """Verified hotel providers + properties for portal login demos."""
+    from datetime import datetime
+
+    from pagume_api.portal.core.security import get_password_hash
+    from pagume_api.portal.db.models.ops import ProviderProfile
+    from pagume_api.portal.db.models.provider import Hotel, Room
+    from pagume_api.portal.db.models.user import User, UserRole
+
+    password_hash = get_password_hash("password123")
+
+    for entry in _PORTAL_CATALOG_HOTELS:
+        user = session.query(User).filter(User.email == entry["email"]).first()
+        if user is None:
+            user = User(
+                email=entry["email"],
+                hashed_password=password_hash,
+                full_name=entry["full_name"],
+                role=UserRole.HOTEL_PROVIDER,
+                is_active=True,
+                is_verified=True,
+            )
+            session.add(user)
+            session.flush()
+            session.add(
+                ProviderProfile(
+                    user_id=user.id,
+                    business_name=entry["hotel"]["name"],
+                    category="hotel",
+                    phone=entry["hotel"]["contact_details"].split("·")[0].strip(),
+                    address=entry["hotel"]["address"],
+                    details={
+                        "propertyType": entry["category"],
+                        "starRating": (
+                            "5"
+                            if entry["quality"] == "luxury"
+                            else "4"
+                            if entry["quality"] == "comfortable"
+                            else "3"
+                        ),
+                        "quality": entry["quality"],
+                    },
+                    status="VERIFIED",
+                    registered_at=datetime.utcnow(),
+                )
+            )
+            session.flush()
+
+        existing = (
+            session.query(Hotel)
+            .filter(Hotel.provider_id == user.id, Hotel.name == entry["hotel"]["name"])
+            .first()
+        )
+        if existing is not None:
+            continue
+
+        hotel = Hotel(
+            provider_id=user.id,
+            name=entry["hotel"]["name"],
+            description=entry["hotel"]["description"],
+            address=entry["hotel"]["address"],
+            latitude=entry["hotel"]["latitude"],
+            longitude=entry["hotel"]["longitude"],
+            contact_details=entry["hotel"]["contact_details"],
+            images=[],
+            amenities=entry["hotel"]["amenities"],
+            policies={},
+            check_in_time=entry["hotel"]["check_in_time"],
+            check_out_time=entry["hotel"]["check_out_time"],
+            cancellation_policy=entry["hotel"]["cancellation_policy"],
+        )
+        session.add(hotel)
+        session.flush()
+        for room in entry["rooms"]:
+            session.add(
+                Room(
+                    hotel_id=hotel.id,
+                    room_type=room["room_type"],
+                    description=room["description"],
+                    capacity=room["capacity"],
+                    beds=room["beds"],
+                    amenities=room["amenities"],
+                    images=[],
+                    price_per_night=room["price_per_night"],
+                    is_available=True,
+                    availability_dates=[],
+                )
+            )
+    session.flush()

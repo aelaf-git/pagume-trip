@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, BedDouble } from "lucide-react";
 import Card from "../common/Card";
 import Button from "../common/Button";
@@ -13,6 +14,7 @@ import { ROOM_TYPES, AMENITIES_OPTIONS } from "../../constants/registrationOptio
 import { ROOM_AVAILABILITY_OPTIONS } from "../../constants/inventoryOptions";
 import { validateRoom } from "../../utils/inventoryValidation";
 import * as inventoryService from "../../services/inventoryService";
+import { queryKeys, STALE_ROOMS_MS } from "../../lib/queryKeys";
 
 const EMPTY_FORM = {
   roomType: "",
@@ -25,8 +27,7 @@ const EMPTY_FORM = {
 };
 
 export default function RoomManagement() {
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -37,23 +38,23 @@ export default function RoomManagement() {
   const [notice, setNotice] = useState(null);
   const noticeTimer = useRef(null);
 
+  const roomsQuery = useQuery({
+    queryKey: queryKeys.rooms,
+    queryFn: () => inventoryService.getRooms(),
+    staleTime: STALE_ROOMS_MS,
+  });
+
+  const rooms = roomsQuery.data ?? [];
+  const loading = roomsQuery.isLoading;
+
   const showNotice = (message) => {
     setNotice(message);
     clearTimeout(noticeTimer.current);
     noticeTimer.current = setTimeout(() => setNotice(null), 3000);
   };
 
-  useEffect(() => () => clearTimeout(noticeTimer.current), []);
-
-  const loadRooms = useCallback(async () => {
-    const data = await inventoryService.getRooms();
-    setRooms(data);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadRooms();
-  }, [loadRooms]);
+  const invalidateRooms = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.rooms });
 
   const openCreate = () => {
     setEditing(null);
@@ -114,7 +115,7 @@ export default function RoomManagement() {
         showNotice("Room added.");
       }
       setModalOpen(false);
-      await loadRooms();
+      await invalidateRooms();
     } finally {
       setSaving(false);
     }
@@ -126,7 +127,7 @@ export default function RoomManagement() {
       await inventoryService.deleteRoom(deleting.id);
       showNotice("Room deleted.");
       setDeleting(null);
-      await loadRooms();
+      await invalidateRooms();
     } finally {
       setDeletingId(null);
     }
