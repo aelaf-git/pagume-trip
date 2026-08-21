@@ -13,7 +13,10 @@ export default function AdminProviders() {
 
   return (
     <div>
-      <PageHeader title="Provider Verification & Content Moderation" description="Review provider applications and moderate platform content" />
+      <PageHeader
+        title="Providers"
+        description="Verify and moderate hotels, resorts, tour agencies, and car rentals"
+      />
 
       <div className="mt-6 flex gap-1 border-b border-gray-200">
         {TABS.map((tab) => (

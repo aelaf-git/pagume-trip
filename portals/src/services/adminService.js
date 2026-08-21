@@ -33,3 +33,36 @@ export async function getSettings() {
 export async function upsertSetting(key, value) {
   return api.put(`/admin/settings/${key}`, { value });
 }
+
+export async function getActivities({ type, limit = 50, offset = 0 } = {}) {
+  const q = new URLSearchParams();
+  if (type) q.set("type", type);
+  if (limit != null) q.set("limit", String(limit));
+  if (offset != null) q.set("offset", String(offset));
+  const suffix = q.toString() ? `?${q}` : "";
+  const rows = await api.get(`/admin/activities${suffix}`);
+  return rows.map((r) => ({
+    id: r.id,
+    type: r.type,
+    title: r.title,
+    summary: r.summary,
+    status: r.status ?? null,
+    actorLabel: r.actor_label ?? null,
+    entityLabel: r.entity_label ?? null,
+    occurredAt: r.occurred_at ?? null,
+    meta: r.meta ?? {},
+  }));
+}
+
+export async function getAdminReviews() {
+  const rows = await api.get("/admin/reviews");
+  return rows.map((r) => ({
+    id: r.id,
+    providerId: r.provider_id,
+    authorName: r.author_name,
+    rating: r.rating,
+    comment: r.comment ?? "",
+    status: r.status,
+    createdAt: r.created_at,
+  }));
+}

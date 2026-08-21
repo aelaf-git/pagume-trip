@@ -38,6 +38,13 @@ class ProviderProfileResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ProviderProfileUpdate(BaseModel):
+    business_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+
+
 class ProviderStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(PENDING|VERIFIED|REJECTED|SUSPENDED|DOCS_REQUESTED)$")
     reason: Optional[str] = None
@@ -170,6 +177,18 @@ class DashboardStats(BaseModel):
     hotels: int = 0
     tours: int = 0
     vehicles: int = 0
+
+
+class ActivityEventResponse(BaseModel):
+    id: str
+    type: str
+    title: str
+    summary: str
+    status: Optional[str] = None
+    actor_label: Optional[str] = None
+    entity_label: Optional[str] = None
+    occurred_at: Optional[datetime] = None
+    meta: Dict[str, Any] = Field(default_factory=dict)
 
 
 class OnboardingStatus(BaseModel):

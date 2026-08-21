@@ -12,6 +12,7 @@ import {
   CarFront,
   UserRound,
   Store,
+  Activity,
 } from "lucide-react";
 
 export const hotelNavItems = [
@@ -25,6 +26,7 @@ export const hotelNavItems = [
 
 export const agencyNavItems = [
   { label: "Dashboard", path: "/agency/dashboard", icon: LayoutDashboard },
+  { label: "Agency", path: "/agency/profile", icon: Building2 },
   { label: "Packages", path: "/agency/listings", icon: Compass },
   { label: "Bookings", path: "/agency/bookings", icon: CalendarCheck },
   { label: "Payments", path: "/agency/payments", icon: Wallet },
@@ -33,6 +35,7 @@ export const agencyNavItems = [
 
 export const carRentalNavItems = [
   { label: "Dashboard", path: "/car-rental/dashboard", icon: LayoutDashboard },
+  { label: "Company", path: "/car-rental/profile", icon: Building2 },
   { label: "Fleet", path: "/car-rental/listings", icon: CarFront },
   { label: "Bookings", path: "/car-rental/bookings", icon: CalendarCheck },
   { label: "Payments", path: "/car-rental/payments", icon: Wallet },
@@ -65,10 +68,9 @@ export const providerNavItems = [
 
 export const adminNavItems = [
   { label: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
-  { label: "Provider Management", path: "/admin/providers", icon: Building2 },
-  { label: "User Management", path: "/admin/users", icon: Users },
   { label: "Destinations", path: "/admin/destinations", icon: MapPin },
-  { label: "Bookings Overview", path: "/admin/bookings", icon: CalendarCheck },
-  { label: "Payments & Transactions", path: "/admin/payments", icon: Wallet },
+  { label: "Providers", path: "/admin/providers", icon: Building2 },
+  { label: "Users", path: "/admin/users", icon: Users },
+  { label: "Activity", path: "/admin/activities", icon: Activity },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];

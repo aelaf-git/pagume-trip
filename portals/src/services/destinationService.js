@@ -21,6 +21,7 @@ function toApi(body) {
 }
 
 function fromApi(d) {
+  const images = d.images || [];
   return {
     id: d.id,
     name: d.name,
@@ -34,7 +35,8 @@ function fromApi(d) {
     historicalInfo: d.historical_info,
     accessibility: d.accessibility,
     seasonalInfo: d.seasonal_info,
-    images: d.images || [],
+    images,
+    coverImage: images[0] || "",
     status: d.status,
     verificationStatus: d.verification_status,
   };
@@ -71,4 +73,15 @@ export async function importDestinations(items) {
     items.map((item) => toApi(item))
   );
   return rows.map(fromApi);
+}
+
+/** Upload destination cover/gallery image via Cloudinary. */
+export async function uploadDestinationImage(file, kind = "gallery") {
+  const form = new FormData();
+  form.append("file", file);
+  const row = await api.postForm(
+    `/uploads/images?kind=${encodeURIComponent(kind)}&scope=destinations`,
+    form
+  );
+  return row.url;
 }

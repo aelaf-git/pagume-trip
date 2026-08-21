@@ -8,6 +8,7 @@ import ConfirmDialog from "../common/ConfirmDialog"
 import { DESTINATION_CATEGORIES, DESTINATION_REGIONS, CATEGORY_TONES } from "../../constants/destinationOptions"
 import { getDestinations, createDestination, updateDestination, deleteDestination, importDestinations } from "../../services/destinationService"
 import DestinationFormModal from "./DestinationFormModal"
+import DestinationDetailModal from "./DestinationDetailModal"
 import BulkImportModal from "./BulkImportModal"
 
 const CATEGORY_FILTER_OPTIONS = [
@@ -22,6 +23,7 @@ export default function DestinationManagement() {
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [formOpen, setFormOpen] = useState(false)
   const [editingDest, setEditingDest] = useState(null)
+  const [detailDest, setDetailDest] = useState(null)
   const [importOpen, setImportOpen] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
   const [notice, setNotice] = useState("")
@@ -82,8 +84,13 @@ export default function DestinationManagement() {
   }
 
   const openEdit = (dest) => {
+    setDetailDest(null)
     setEditingDest(dest)
     setFormOpen(true)
+  }
+
+  const openDetail = (dest) => {
+    setDetailDest(dest)
   }
 
   return (
@@ -137,10 +144,10 @@ export default function DestinationManagement() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Name</th>
+                  <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Destination</th>
                   <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Region</th>
+                  <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Location</th>
                   <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Category</th>
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Created</th>
                   <th className="pb-3 text-xs font-semibold uppercase tracking-wide text-gray-400 text-right">Actions</th>
                 </tr>
               </thead>
@@ -148,11 +155,44 @@ export default function DestinationManagement() {
                 {filtered.map((dest) => (
                   <tr
                     key={dest.id}
-                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openDetail(dest)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        openDetail(dest)
+                      }
+                    }}
+                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="py-3.5 pr-4">
-                      <span className="text-sm font-medium text-gray-900">{dest.name}</span>
-                      <span className="block text-xs text-gray-500 mt-0.5 line-clamp-1">{dest.description}</span>
+                      <div className="flex items-center gap-3">
+                        {dest.coverImage || dest.images?.[0] ? (
+                          <img
+                            src={dest.coverImage || dest.images[0]}
+                            alt=""
+                            className="h-12 w-16 shrink-0 rounded-md object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-400">
+                            <MapPin className="h-5 w-5" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium text-brand-700 hover:underline">
+                            {dest.name}
+                          </span>
+                          <span className="block text-xs text-gray-500 mt-0.5 line-clamp-1">
+                            {dest.description}
+                          </span>
+                          {(dest.images?.length || 0) > 0 && (
+                            <span className="text-xs text-gray-400">
+                              {dest.images.length} photo{dest.images.length === 1 ? "" : "s"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3.5 pr-4">
                       <span className="text-sm text-gray-700">
@@ -160,18 +200,21 @@ export default function DestinationManagement() {
                       </span>
                     </td>
                     <td className="py-3.5 pr-4">
+                      <span className="text-sm text-gray-700 tabular-nums">
+                        {dest.latitude != null && dest.longitude != null
+                          ? `${Number(dest.latitude).toFixed(4)}, ${Number(dest.longitude).toFixed(4)}`
+                          : "—"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4">
                       <Badge tone={CATEGORY_TONES[dest.category] || "gray"}>
                         {DESTINATION_CATEGORIES.find((c) => c.value === dest.category)?.label || dest.category}
                       </Badge>
                     </td>
-                    <td className="py-3.5 pr-4">
-                      <span className="text-sm text-gray-700">
-                        {new Date(dest.createdAt).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="py-3.5">
+                    <td className="py-3.5" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         <button
+                          type="button"
                           onClick={() => openEdit(dest)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                           title="Edit"
@@ -179,6 +222,7 @@ export default function DestinationManagement() {
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => setDeletingId(dest.id)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                           title="Delete"
@@ -194,6 +238,13 @@ export default function DestinationManagement() {
           </div>
         </Card>
       )}
+
+      <DestinationDetailModal
+        open={Boolean(detailDest)}
+        destination={detailDest}
+        onClose={() => setDetailDest(null)}
+        onEdit={openEdit}
+      />
 
       <DestinationFormModal
         open={formOpen}

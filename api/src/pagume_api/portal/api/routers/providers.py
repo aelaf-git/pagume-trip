@@ -11,6 +11,8 @@ from pagume_api.portal.db.models.ops import (
     PortalBooking,
     PortalPayment,
     PortalReview,
+    ProviderDocument,
+    ProviderProfile,
 )
 from pagume_api.portal.db.models.provider import (
     DriverProfile,
@@ -21,6 +23,8 @@ from pagume_api.portal.db.models.provider import (
 )
 from pagume_api.portal.db.models.user import User, UserRole
 from pagume_api.portal.sync_agent import (
+    delete_portal_tour_from_agent,
+    delete_portal_vehicle_from_agent,
     sync_portal_hotel_availability,
     sync_portal_tour_availability,
     sync_portal_vehicle_availability,
@@ -43,12 +47,15 @@ from pagume_api.portal.schemas.inventory import (
     VehicleUpdate,
 )
 from pagume_api.portal.schemas.ops import (
+    DocumentMeta,
     NotificationResponse,
     PortalBookingCreate,
     PortalBookingResponse,
     PortalPaymentResponse,
     PortalReviewResponse,
     ProviderDashboardStats,
+    ProviderProfileResponse,
+    ProviderProfileUpdate,
 )
 
 router = APIRouter()
@@ -336,6 +343,11 @@ async def delete_tour(
     current_user: User = Depends(require_role([UserRole.TOUR_AGENCY])),
 ):
     tour = await _get_owned_tour(db, tour_id, current_user)
+
+    def _cleanup(sync_session) -> None:
+        delete_portal_tour_from_agent(sync_session, tour_id)
+
+    await db.run_sync(_cleanup)
     await db.delete(tour)
     await db.commit()
 
@@ -348,6 +360,77 @@ async def _get_owned_tour(db: AsyncSession, tour_id: int, user: User) -> TourPac
     if user.role != UserRole.ADMIN and tour.agency_id != user.id:
         raise HTTPException(status_code=403, detail="Not your tour")
     return tour
+
+
+# ── Provider profile ─────────────────────────────────────────────────────────
+
+
+def _profile_response(profile: ProviderProfile, email: str | None) -> ProviderProfileResponse:
+    return ProviderProfileResponse(
+        id=profile.id,
+        user_id=profile.user_id,
+        business_name=profile.business_name,
+        category=profile.category,
+        phone=profile.phone,
+        address=profile.address,
+        details=profile.details or {},
+        status=profile.status,
+        rejection_reason=profile.rejection_reason,
+        status_note=profile.status_note,
+        registered_at=profile.registered_at,
+        email=email,
+        documents=[],
+    )
+
+
+@router.get("/profile", response_model=ProviderProfileResponse)
+async def read_my_profile(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    result = await db.execute(
+        select(ProviderProfile).where(ProviderProfile.user_id == current_user.id)
+    )
+    profile = result.scalars().first()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Provider profile not found")
+    docs_result = await db.execute(
+        select(ProviderDocument).where(ProviderDocument.user_id == current_user.id)
+    )
+    response = _profile_response(profile, current_user.email)
+    response.documents = [
+        DocumentMeta(
+            doc_type=d.doc_type,
+            file_name=d.file_name,
+            file_size=d.file_size or 0,
+            url=d.url,
+        )
+        for d in docs_result.scalars().all()
+    ]
+    return response
+
+
+@router.put("/profile", response_model=ProviderProfileResponse)
+async def update_my_profile(
+    body: ProviderProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    result = await db.execute(
+        select(ProviderProfile).where(ProviderProfile.user_id == current_user.id)
+    )
+    profile = result.scalars().first()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Provider profile not found")
+    data = body.model_dump(exclude_unset=True)
+    if "details" in data and data["details"] is not None:
+        merged = dict(profile.details or {})
+        merged.update(data["details"])
+        data["details"] = merged
+    _apply_update(profile, data)
+    await db.commit()
+    await db.refresh(profile)
+    return _profile_response(profile, current_user.email)
 
 
 # ── Vehicles ─────────────────────────────────────────────────────────────────
@@ -419,6 +502,11 @@ async def delete_vehicle(
     current_user: User = Depends(require_role([UserRole.CAR_RENTAL])),
 ):
     vehicle = await _get_owned_vehicle(db, vehicle_id, current_user)
+
+    def _cleanup(sync_session) -> None:
+        delete_portal_vehicle_from_agent(sync_session, vehicle_id)
+
+    await db.run_sync(_cleanup)
     await db.delete(vehicle)
     await db.commit()
 

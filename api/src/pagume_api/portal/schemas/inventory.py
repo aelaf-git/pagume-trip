@@ -99,7 +99,7 @@ class TourPackageBase(BaseModel):
     excluded_services: List[str] = Field(default_factory=list)
     accommodation: Optional[str] = ""
     transportation: Optional[str] = ""
-    activities: List[str] = Field(default_factory=list)
+    activities: List[Any] = Field(default_factory=list)
     guide: Optional[str] = ""
     images: List[str] = Field(default_factory=list)
     availability_dates: List[AvailabilityEntry] = Field(default_factory=list)
@@ -123,7 +123,7 @@ class TourPackageUpdate(BaseModel):
     excluded_services: Optional[List[str]] = None
     accommodation: Optional[str] = None
     transportation: Optional[str] = None
-    activities: Optional[List[str]] = None
+    activities: Optional[List[Any]] = None
     guide: Optional[str] = None
     images: Optional[List[str]] = None
     availability_dates: Optional[List[AvailabilityEntry]] = None

@@ -12,7 +12,10 @@ from fastapi import HTTPException, UploadFile
 
 from pagume_api.config import get_settings
 
-_ALLOWED_KINDS = frozenset({"cover", "profile", "gallery"})
+_ALLOWED_KINDS = frozenset({"cover", "profile", "gallery", "logo"})
+_ALLOWED_SCOPES = frozenset(
+    {"hotels", "tours", "agency", "vehicles", "car_rental", "destinations"}
+)
 _MAX_BYTES = 8 * 1024 * 1024  # 8 MiB
 _CONTENT_TYPES = frozenset(
     {
@@ -64,19 +67,29 @@ def _configure() -> None:
     _configured = True
 
 
-def _safe_folder(kind: str) -> str:
+def _safe_folder(scope: str, kind: str) -> str:
+    if scope not in _ALLOWED_SCOPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"scope must be one of: {', '.join(sorted(_ALLOWED_SCOPES))}",
+        )
     if kind not in _ALLOWED_KINDS:
         raise HTTPException(
             status_code=400,
             detail=f"kind must be one of: {', '.join(sorted(_ALLOWED_KINDS))}",
         )
-    return f"pagume/hotels/{kind}"
+    return f"pagume/{scope}/{kind}"
 
 
-async def upload_hotel_image(file: UploadFile, kind: str = "gallery") -> dict:
-    """Upload a hotel image; returns secure_url and public_id."""
+async def upload_image(
+    file: UploadFile,
+    *,
+    kind: str = "gallery",
+    scope: str = "hotels",
+) -> dict:
+    """Upload an image; returns secure_url and public_id."""
     _configure()
-    folder = _safe_folder(kind)
+    folder = _safe_folder(scope, kind)
 
     content_type = (file.content_type or "").lower()
     if content_type not in _CONTENT_TYPES:
@@ -118,11 +131,17 @@ async def upload_hotel_image(file: UploadFile, kind: str = "gallery") -> dict:
         "url": url,
         "public_id": result.get("public_id"),
         "kind": kind,
+        "scope": scope,
         "width": result.get("width"),
         "height": result.get("height"),
         "format": result.get("format"),
         "size": result.get("bytes"),
     }
+
+
+async def upload_hotel_image(file: UploadFile, kind: str = "gallery") -> dict:
+    """Backward-compatible hotel upload."""
+    return await upload_image(file, kind=kind, scope="hotels")
 
 
 def upload_bytes(stream: BinaryIO, folder: str) -> dict:
