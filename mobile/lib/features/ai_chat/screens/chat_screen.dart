@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/chat_provider.dart';
 
@@ -45,6 +46,90 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ],
       ),
+      drawer: Drawer(
+        child: Column(
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.travel_explore,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Pagume Trip Chats',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.add, color: AppColors.primary),
+              title: const Text(
+                'New Chat Thread',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+              onTap: () {
+                ref.read(chatProvider.notifier).createNewThread();
+                Navigator.pop(context); // Close drawer
+              },
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: chatState.threads.length,
+                itemBuilder: (context, index) {
+                  final thread = chatState.threads[index];
+                  final isActive = thread.id == chatState.threadId;
+
+                  return ListTile(
+                    leading: Icon(
+                      Icons.chat_bubble_outline,
+                      color: isActive ? AppColors.primary : Colors.grey,
+                    ),
+                    title: Text(
+                      thread.title,
+                      style: TextStyle(
+                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                        color: isActive ? AppColors.primary : Colors.black87,
+                      ),
+                    ),
+                    trailing: chatState.threads.length > 1
+                        ? IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () {
+                              ref.read(chatProvider.notifier).deleteThread(thread.id);
+                            },
+                          )
+                        : null,
+                    selected: isActive,
+                    selectedTileColor: AppColors.primary.withOpacity(0.05),
+                    onTap: () {
+                      ref.read(chatProvider.notifier).switchThread(thread.id);
+                      Navigator.pop(context); // Close drawer
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -52,8 +137,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ? _buildEmptyState()
                 : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: messages.length,
+              itemCount: messages.length + (chatState.isProcessing ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == messages.length) {
+                  return _buildThinkingBubble();
+                }
                 final message = messages[index];
 
                 if (message.isActivity) {
@@ -160,99 +248,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
-
-    final chatNotifier = ref.read(chatProvider.notifier);
-
-    // 1. Add user message.
-    chatNotifier.sendUserMessage(text);
-
-    // 2. Create ONE ID for the activity message.
-    //
-    // This is important because we use the same ID later
-    // when updating the activity steps.
-    final activityId =
-    DateTime.now().millisecondsSinceEpoch.toString();
-
-    chatNotifier.addAIResponse(
-      '🔍 Pagume is planning your trip...',
-      isActivity: true,
-
-      // FIX:
-      // addAIResponse now accepts steps.
-      steps: _agentSteps
-          .map((step) => '⏳ $step')
-          .toList(),
-
-      // FIX:
-      // Use the same ID that updateMessage() will use.
-
-    );
-
-    // 3. Update steps one by one.
-    for (int i = 0; i < _agentSteps.length; i++) {
-      await Future.delayed(
-        const Duration(milliseconds: 500),
-      );
-
-      final updatedSteps = List<String>.from(
-        _agentSteps,
-      );
-
-      for (int j = 0; j <= i; j++) {
-        updatedSteps[j] = '✅ ${updatedSteps[j]}';
-      }
-
-      for (int j = i + 1; j < updatedSteps.length; j++) {
-        updatedSteps[j] = '⏳ ${updatedSteps[j]}';
-      }
-
-      final updatedMessage = ChatMessage(
-        id: activityId,
-        text: '🔍 Pagume is planning your trip...',
-        isUser: false,
-        timestamp: DateTime.now(),
-        isActivity: true,
-        steps: updatedSteps,
-      );
-
-      chatNotifier.updateMessage(
-        activityId,
-        updatedMessage,
-      );
-    }
-
-    // 4. Remove activity message while keeping
-    // the other messages.
-    await Future.delayed(
-      const Duration(milliseconds: 300),
-    );
-
-    final currentMessages =
-    List<ChatMessage>.from(chatNotifier.state.messages);
-
-    final remainingMessages = currentMessages
-        .where((msg) => msg.id != activityId)
-        .toList();
-
-    chatNotifier.replaceMessages(remainingMessages);
-
-    // 5. Add final AI response.
-    final response = _getAIResponse(text);
-
-    chatNotifier.addAIResponse(
-      response,
-      isActivity: false,
-    );
-
-    // 6. Create proposal if it's a destination request.
-    final lowerText = text.toLowerCase();
-
-    if (lowerText.contains('lalibela') ||
-        lowerText.contains('gondar') ||
-        lowerText.contains('axum') ||
-        lowerText.contains('gorgora')) {
-      _createTripProposal(text);
-    }
+    ref.read(chatProvider.notifier).sendUserMessage(text);
   }
 
   // ============================================================
@@ -567,14 +563,80 @@ What would you like to know? 🗺️
           maxWidth:
           MediaQuery.of(context).size.width * 0.75,
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isUser
-                ? Colors.white
-                : Colors.black87,
-            height: 1.5,
+        child: isUser
+            ? Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  height: 1.5,
+                ),
+              )
+            : MarkdownBody(
+                data: text,
+                styleSheet: MarkdownStyleSheet(
+                  p: const TextStyle(
+                    color: Colors.black87,
+                    height: 1.5,
+                  ),
+                  strong: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  em: const TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildThinkingBubble() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+            bottomLeft: Radius.zero,
           ),
+          border: Border.all(
+            color: AppColors.grey200,
+          ),
+        ),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Assistant is thinking...',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -604,9 +666,7 @@ What would you like to know? 🗺️
               controller: _controller,
               enabled: !isProcessing,
               decoration: InputDecoration(
-                hintText: isProcessing
-                    ? 'Processing...'
-                    : 'Ask me about Ethiopia...',
+                hintText: 'Ask me about Ethiopia...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25),
                   borderSide: BorderSide.none,

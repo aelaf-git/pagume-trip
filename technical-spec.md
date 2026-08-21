@@ -96,15 +96,22 @@ backend/
 ### 3.2 Portal Directory Structure
 ```text
 portals/
+├── public/                     # Favicon and static files
 ├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── (auth)/             # Login, Registration
-│   │   ├── admin/              # Admin Portal views
-│   │   └── provider/           # Provider Portal views
-│   ├── components/             # Reusable UI (ui primitives, forms, layouts)
-│   ├── features/               # Domain-driven logic (bookings, inventory, users)
-│   ├── lib/                    # Utilities, Axios instances
-│   └── types/                  # Global TS interfaces & Zod schemas
+│   ├── assets/branding/        # Logo and brand marks
+│   ├── components/             # Shared UI (layout, forms, admin, inventory)
+│   ├── constants/
+│   ├── contexts/
+│   ├── hooks/
+│   ├── layouts/                # Admin, hotel, agency, car-rental, driver
+│   ├── pages/                  # Auth, admin, provider, marketplace screens
+│   ├── routes/
+│   ├── services/               # API clients
+│   └── utils/
+├── docs/                       # Portal requirements and API notes
+├── index.html
+├── package.json
+└── vite.config.js
 ```
 
 ### 3.3 Core Portal Features

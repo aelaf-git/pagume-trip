@@ -1,0 +1,40 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	supervisor(supervisor)
+	destination(destination)
+	accommodation(accommodation)
+	transport(transport)
+	car_rental(car_rental)
+	tour(tour)
+	budget(budget)
+	itinerary(itinerary)
+	booking(booking)
+	respond(respond)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> supervisor;
+	accommodation --> supervisor;
+	booking --> supervisor;
+	budget --> supervisor;
+	car_rental --> supervisor;
+	destination --> supervisor;
+	itinerary --> supervisor;
+	supervisor -.-> accommodation;
+	supervisor -.-> booking;
+	supervisor -.-> budget;
+	supervisor -.-> car_rental;
+	supervisor -.-> destination;
+	supervisor -.-> itinerary;
+	supervisor -.-> respond;
+	supervisor -.-> tour;
+	supervisor -.-> transport;
+	tour --> supervisor;
+	transport --> supervisor;
+	respond --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
