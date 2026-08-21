@@ -222,6 +222,11 @@ def sync_portal_vehicle_availability(session: Session, portal_vehicle: Any) -> N
 
     vehicle = session.get(models.Vehicle, vid)
     name = f"{portal_vehicle.make} {portal_vehicle.model}".strip()
+    pickup = (
+        ", ".join(portal_vehicle.pickup_locations or [])
+        if isinstance(portal_vehicle.pickup_locations, list)
+        else (portal_vehicle.pickup_locations or "")
+    )
     if vehicle is None:
         vehicle = models.Vehicle(
             id=vid,
@@ -240,13 +245,29 @@ def sync_portal_vehicle_availability(session: Session, portal_vehicle: Any) -> N
             insurance=portal_vehicle.insurance_details or "",
             driver_included=bool(portal_vehicle.driver_available),
             service_type=portal_vehicle.category or "car",
-            pickup_location=", ".join(portal_vehicle.pickup_locations or [])
-            if isinstance(portal_vehicle.pickup_locations, list)
-            else "",
+            pickup_location=pickup,
             provider_status="VERIFIED",
             currency="ETB",
         )
         session.add(vehicle)
+        session.flush()
+    else:
+        vehicle.name = name or vehicle.name
+        vehicle.make = portal_vehicle.make or "Unknown"
+        vehicle.model = portal_vehicle.model or "Unknown"
+        vehicle.year = portal_vehicle.year
+        vehicle.seats = int(portal_vehicle.seats or 4)
+        vehicle.transmission = portal_vehicle.transmission or "manual"
+        vehicle.fuel_type = portal_vehicle.fuel_type or "diesel"
+        vehicle.is_4wd = bool(portal_vehicle.is_4wd)
+        vehicle.daily_price_etb = float(portal_vehicle.daily_price or 0)
+        vehicle.weekly_price_etb = portal_vehicle.weekly_price
+        vehicle.deposit_etb = float(portal_vehicle.deposit or 0)
+        vehicle.insurance = portal_vehicle.insurance_details or ""
+        vehicle.driver_included = bool(portal_vehicle.driver_available)
+        vehicle.service_type = portal_vehicle.category or "car"
+        vehicle.pickup_location = pickup
+        vehicle.provider_status = "VERIFIED"
         session.flush()
 
     booking_id = f"portal_cal_{vid}"
@@ -284,6 +305,25 @@ def sync_portal_vehicle_availability(session: Session, portal_vehicle: Any) -> N
     session.flush()
 
 
+def delete_portal_vehicle_from_agent(session: Session, portal_vehicle_id: int) -> None:
+    """Remove mirrored agent vehicle rows for a deleted portal fleet item."""
+    vid = agent_vehicle_id(portal_vehicle_id)
+    booking_id = f"portal_cal_{vid}"
+    session.execute(
+        delete(models.VehicleReservation).where(models.VehicleReservation.vehicle_id == vid)
+    )
+    session.execute(
+        delete(models.VehicleAvailability).where(models.VehicleAvailability.vehicle_id == vid)
+    )
+    vehicle = session.get(models.Vehicle, vid)
+    if vehicle is not None:
+        session.delete(vehicle)
+    booking = session.get(models.Booking, booking_id)
+    if booking is not None:
+        session.delete(booking)
+    session.flush()
+
+
 def sync_portal_tour_availability(session: Session, portal_tour: Any) -> None:
     tid = agent_tour_id(portal_tour.id)
     dest_id = "dest_bahir_dar"
@@ -311,6 +351,20 @@ def sync_portal_tour_availability(session: Session, portal_tour: Any) -> None:
             provider_status="VERIFIED",
         )
         session.add(tour)
+        session.flush()
+    else:
+        tour.agency_id = str(portal_tour.agency_id)
+        tour.name = portal_tour.name
+        tour.description = portal_tour.description or ""
+        tour.duration_days = portal_tour.duration_days
+        tour.price_etb = float(portal_tour.price or 0)
+        tour.max_participants = int(portal_tour.max_participants or 12)
+        tour.min_participants = int(portal_tour.min_participants or 1)
+        tour.included = portal_tour.included_services or []
+        tour.excluded = portal_tour.excluded_services or []
+        tour.category = portal_tour.package_type or "tour"
+        tour.seats_remaining = int(portal_tour.max_participants or 8)
+        tour.provider_status = "VERIFIED"
         session.flush()
 
     booking_id = f"portal_cal_{tid}"
@@ -341,4 +395,23 @@ def sync_portal_tour_availability(session: Session, portal_tour: Any) -> None:
                     status="CONFIRMED",
                 )
             )
+    session.flush()
+
+
+def delete_portal_tour_from_agent(session: Session, portal_tour_id: int) -> None:
+    """Remove mirrored agent tour rows for a deleted portal package."""
+    tid = agent_tour_id(portal_tour_id)
+    booking_id = f"portal_cal_{tid}"
+    session.execute(
+        delete(models.TourReservation).where(models.TourReservation.tour_id == tid)
+    )
+    session.execute(
+        delete(models.TourAvailability).where(models.TourAvailability.tour_id == tid)
+    )
+    tour = session.get(models.TourPackage, tid)
+    if tour is not None:
+        session.delete(tour)
+    booking = session.get(models.Booking, booking_id)
+    if booking is not None:
+        session.delete(booking)
     session.flush()

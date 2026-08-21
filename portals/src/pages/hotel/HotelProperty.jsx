@@ -29,8 +29,7 @@ const EMPTY = {
   images: [],
 };
 
-function hotelToForm(h, fallbackAvatar = "") {
-  const profilePicture = h.profilePicture || fallbackAvatar || "";
+function hotelToForm(h) {
   return {
     name: h.name ?? "",
     description: h.description ?? "",
@@ -43,13 +42,13 @@ function hotelToForm(h, fallbackAvatar = "") {
     cancellationPolicy: h.cancellationPolicy ?? "",
     amenities: (h.amenities ?? []).join(", "),
     coverImage: h.coverImage ?? "",
-    profilePicture,
+    profilePicture: h.profilePicture ?? "",
     images: h.images ?? [],
   };
 }
 
 export default function HotelProperty() {
-  const { avatarUrl, setAvatarUrl } = useAuth();
+  const { user, setAvatarUrl } = useAuth();
   const queryClient = useQueryClient();
   const [hotelId, setHotelId] = useState(null);
   const [form, setForm] = useState(EMPTY);
@@ -58,13 +57,13 @@ export default function HotelProperty() {
   const [photoSaving, setPhotoSaving] = useState(false);
   const [notice, setNotice] = useState(null);
   const [error, setError] = useState(null);
-  const healedRef = useRef(false);
   const seededFrom = useRef(null);
 
   const hotelsQuery = useQuery({
-    queryKey: queryKeys.hotels,
+    queryKey: [...queryKeys.hotels, user?.id],
     queryFn: () => inventoryService.getHotels(),
     staleTime: STALE_HOTEL_MS,
+    enabled: Boolean(user?.id),
   });
 
   useEffect(() => {
@@ -81,25 +80,14 @@ export default function HotelProperty() {
     }
     seededFrom.current = stamp;
     setHotelId(h.id);
-    setForm(hotelToForm(h, avatarUrl));
+    setForm(hotelToForm(h));
     setFormReady(true);
-    if (h.profilePicture) setAvatarUrl(h.profilePicture);
-    if (!h.profilePicture && avatarUrl && !healedRef.current) {
-      healedRef.current = true;
-      inventoryService
-        .updateHotelImages(h.id, { profilePicture: avatarUrl })
-        .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.hotels }))
-        .catch(() => {
-          healedRef.current = false;
-        });
-    }
+    setAvatarUrl(h.profilePicture || null);
   }, [
     hotelsQuery.isFetched,
     hotelsQuery.data,
     hotelsQuery.dataUpdatedAt,
-    avatarUrl,
     setAvatarUrl,
-    queryClient,
   ]);
 
   const invalidateHotels = () =>
@@ -160,7 +148,7 @@ export default function HotelProperty() {
           .map((s) => s.trim())
           .filter(Boolean),
         coverImage: form.coverImage || "",
-        profilePicture: form.profilePicture || avatarUrl || "",
+        profilePicture: form.profilePicture || "",
         images: form.images ?? [],
         policies: {},
       };

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, CarFront } from "lucide-react";
 import Card from "../common/Card";
 import Button from "../common/Button";
@@ -9,10 +10,12 @@ import Checkbox from "../common/Checkbox";
 import Modal from "../common/Modal";
 import Badge from "../common/Badge";
 import ConfirmDialog from "../common/ConfirmDialog";
+import { ImageGalleryField } from "../common/ImageUploadFields";
 import { TRANSMISSION_TYPES } from "../../constants/registrationOptions";
 import { FUEL_TYPES, DRIVER_AVAILABILITY_OPTIONS } from "../../constants/inventoryOptions";
 import { validateVehicle } from "../../utils/inventoryValidation";
 import * as inventoryService from "../../services/inventoryService";
+import { queryKeys, STALE_VEHICLES_MS } from "../../lib/queryKeys";
 
 const EMPTY_FORM = {
   make: "",
@@ -32,7 +35,7 @@ const EMPTY_FORM = {
   dropoffLocations: "",
   rentalPolicies: "",
   availabilityDates: "",
-  images: "",
+  images: [],
 };
 
 const OPTION_LABELS = (options) => Object.fromEntries(options.map(({ value, label }) => [value, label]));
@@ -42,8 +45,7 @@ const FUEL_LABELS = OPTION_LABELS(FUEL_TYPES);
 const DRIVER_LABELS = OPTION_LABELS(DRIVER_AVAILABILITY_OPTIONS);
 
 export default function VehicleFleetManagement() {
-  const [vehicles, setVehicles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -54,6 +56,15 @@ export default function VehicleFleetManagement() {
   const [notice, setNotice] = useState(null);
   const noticeTimer = useRef(null);
 
+  const vehiclesQuery = useQuery({
+    queryKey: queryKeys.vehicles,
+    queryFn: () => inventoryService.getVehicles(),
+    staleTime: STALE_VEHICLES_MS,
+  });
+
+  const vehicles = vehiclesQuery.data ?? [];
+  const loading = vehiclesQuery.isLoading;
+
   const showNotice = (message) => {
     setNotice(message);
     clearTimeout(noticeTimer.current);
@@ -61,16 +72,6 @@ export default function VehicleFleetManagement() {
   };
 
   useEffect(() => () => clearTimeout(noticeTimer.current), []);
-
-  const loadVehicles = useCallback(async () => {
-    const data = await inventoryService.getVehicles();
-    setVehicles(data);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadVehicles();
-  }, [loadVehicles]);
 
   const openCreate = () => {
     setEditing(null);
@@ -99,7 +100,7 @@ export default function VehicleFleetManagement() {
       dropoffLocations: (vehicle.dropoffLocations ?? []).join(", "),
       rentalPolicies: vehicle.rentalPolicies ?? "",
       availabilityDates: (vehicle.availabilityDates ?? []).join(", "),
-      images: (vehicle.images ?? []).join(", "),
+      images: (vehicle.images ?? []).filter(Boolean),
     });
     setErrors({});
     setModalOpen(true);
@@ -131,15 +132,15 @@ export default function VehicleFleetManagement() {
       fourWheelDrive: form.fourWheelDrive,
       category: form.category || "car",
       dailyPrice: Number(form.dailyPrice),
-      weeklyPrice: Number(form.weeklyPrice),
-      deposit: Number(form.deposit),
+      weeklyPrice: form.weeklyPrice === "" ? null : Number(form.weeklyPrice),
+      deposit: form.deposit === "" ? null : Number(form.deposit),
       insurance: form.insurance,
       driverAvailability: form.driverAvailability,
       pickupLocations: splitList(form.pickupLocations),
       dropoffLocations: splitList(form.dropoffLocations),
       rentalPolicies: form.rentalPolicies,
       availabilityDates: splitList(form.availabilityDates),
-      images: splitList(form.images),
+      images: form.images ?? [],
     };
 
     try {
@@ -151,7 +152,7 @@ export default function VehicleFleetManagement() {
         showNotice("Vehicle added to your fleet.");
       }
       setModalOpen(false);
-      await loadVehicles();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.vehicles });
     } finally {
       setSaving(false);
     }
@@ -163,7 +164,7 @@ export default function VehicleFleetManagement() {
       await inventoryService.deleteVehicle(deleting.id);
       showNotice("Vehicle removed from your fleet.");
       setDeleting(null);
-      await loadVehicles();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.vehicles });
     } finally {
       setDeletingId(null);
     }
@@ -205,6 +206,7 @@ export default function VehicleFleetManagement() {
                   <th className="px-4 py-3 font-medium">Transmission</th>
                   <th className="px-4 py-3 font-medium">Fuel</th>
                   <th className="px-4 py-3 font-medium">4WD</th>
+                  <th className="px-4 py-3 font-medium">Photos</th>
                   <th className="px-4 py-3 font-medium">Daily / Weekly</th>
                   <th className="px-4 py-3 font-medium">Driver</th>
                   <th className="px-4 py-3 font-medium text-right">Actions</th>
@@ -217,7 +219,9 @@ export default function VehicleFleetManagement() {
                       <p className="font-medium text-gray-900">
                         {vehicle.make} {vehicle.model}
                       </p>
-                      <p className="text-xs text-gray-400">Deposit: ETB {vehicle.deposit.toLocaleString()}</p>
+                      <p className="text-xs text-gray-400">
+                        Deposit: ETB {(vehicle.deposit ?? 0).toLocaleString()}
+                      </p>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{vehicle.year}</td>
                     <td className="px-4 py-3 text-gray-700">{vehicle.seats}</td>
@@ -232,9 +236,12 @@ export default function VehicleFleetManagement() {
                         <Badge tone="gray">2WD</Badge>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-gray-700">{(vehicle.images ?? []).length}</td>
                     <td className="px-4 py-3 text-gray-700">
-                      <p>ETB {vehicle.dailyPrice.toLocaleString()} / day</p>
-                      <p className="text-xs text-gray-400">ETB {vehicle.weeklyPrice.toLocaleString()} / week</p>
+                      <p>ETB {(vehicle.dailyPrice ?? 0).toLocaleString()} / day</p>
+                      <p className="text-xs text-gray-400">
+                        ETB {(vehicle.weeklyPrice ?? 0).toLocaleString()} / week
+                      </p>
                     </td>
                     <td className="px-4 py-3 text-gray-700">
                       {DRIVER_LABELS[vehicle.driverAvailability] ?? vehicle.driverAvailability}
@@ -398,12 +405,6 @@ export default function VehicleFleetManagement() {
               value={form.availabilityDates ?? ""}
               onChange={(e) => handleChange("availabilityDates", e.target.value)}
             />
-            <Input
-              id="images"
-              label="Image URLs (comma-separated)"
-              value={form.images ?? ""}
-              onChange={(e) => handleChange("images", e.target.value)}
-            />
           </div>
           <Textarea
             id="rentalPolicies"
@@ -428,6 +429,14 @@ export default function VehicleFleetManagement() {
             placeholder="Describe coverage, excess, and what's included…"
             value={form.insurance}
             onChange={(e) => handleChange("insurance", e.target.value)}
+          />
+
+          <ImageGalleryField
+            label="Vehicle photos"
+            hint="Upload images to Cloudinary for this vehicle."
+            value={form.images}
+            onChange={(urls) => handleChange("images", urls)}
+            onUpload={(file) => inventoryService.uploadVehicleImage(file, "gallery")}
           />
         </div>
       </Modal>
