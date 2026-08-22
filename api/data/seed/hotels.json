@@ -753,5 +753,40 @@
         "currency": "ETB"
       }
     ]
+  },
+  {
+    "id": "hotel_danakil_basecamp",
+    "destination_id": "dest_danakil",
+    "name": "Afar Salt Camp Lodge",
+    "description": "Simple desert lodge near Hamedela used as a staging base for Erta Ale and Dallol expeditions.",
+    "property_type": "lodge",
+    "latitude": 14.25,
+    "longitude": 40.28,
+    "amenities": ["camping_support", "meals", "generator"],
+    "rating": 4.0,
+    "comfort_level": "standard",
+    "check_in_time": "12:00",
+    "check_out_time": "10:00",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ],
+    "rooms": [
+      {
+        "id": "room_danakil_twin",
+        "hotel_id": "hotel_danakil_basecamp",
+        "room_type": "twin",
+        "description": "Twin bunk-style room with shared facilities for expedition nights.",
+        "capacity": 2,
+        "beds": 2,
+        "amenities": ["shared_bath", "fan"],
+        "nightly_price_etb": 3200,
+        "currency": "ETB"
+      }
+    ]
   }
 ]

@@ -84,7 +84,8 @@ KNOWN_DESTINATIONS = (
     ("harar", "Harar"),
     ("simien", "Simien Mountains"),
     ("omo", "Omo Valley"),
-    ("danakil", "Danakil"),
+    ("danakil depression", "Danakil Depression"),
+    ("danakil", "Danakil Depression"),
 )
 
 
@@ -149,7 +150,18 @@ def extract_trip_context(text: str, existing: TripContext | None = None) -> Trip
                 ctx.wants_circuit = False
             break
 
-    if not matched_city and ("ethiopia" in lowered or "ethiopian" in lowered):
+    # Country / open-ended planning: list verified places (do not search the raw sentence).
+    open_ended_plan = bool(
+        re.search(
+            r"\b(plan|planning|organize|book)\b.{0,40}\b(trip|vacation|holiday|itinerary|travel)\b",
+            lowered,
+        )
+        or re.search(r"\brecommend\b.{0,30}\b(places?|destinations?|where)\b", lowered)
+        or re.search(r"\bwhere (should|can|do) i\b", lowered)
+    )
+    if not matched_city and (
+        "ethiopia" in lowered or "ethiopian" in lowered or open_ended_plan
+    ):
         ctx.browse_destinations = True
         ctx.destination_query = None
         ctx.wants_hotel = False
@@ -237,6 +249,8 @@ def _is_full_plan_request(lowered: str) -> bool:
     if re.search(r"\bvisit\b", lowered) and re.search(r"\b\d+\s*-?\s*days?\b", lowered):
         return True
     if re.search(r"\b(for|in)\s+(\d+|one|two|three|four|five|six|seven)\s*-?\s*days?\b", lowered):
+        return True
+    if re.search(r"\b(go to|travel to|head to|want to go|wanna go)\b", lowered):
         return True
     return False
 

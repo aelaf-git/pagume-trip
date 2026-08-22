@@ -1,0 +1,42 @@
+# Version control and tooling
+.git
+.gitignore
+.github
+.idea
+.cursor
+.vscode
+
+# Python
+**/__pycache__
+**/*.py[cod]
+**/.venv
+venv
+**/.pytest_cache
+**/*.egg-info
+**/build
+**/dist
+
+# Node / frontend
+**/node_modules
+portals/dist
+
+# Flutter app is not containerized
+mobile
+
+# Secrets and local env
+**/.env
+**/.env.*
+!**/.env.example
+
+# Docs, diagrams, and scratch files
+*.md
+!README.md
+*.png
+*.docx
+pagume_agent_graph.*
+generate_graph.py
+git status
+convert_docx.py
+
+# Local database dumps
+ops/mirror/dump

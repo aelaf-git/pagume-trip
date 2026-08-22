@@ -5,10 +5,8 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from pagume_api.config import get_settings as get_main_settings
 
-
-def _to_asyncpg(url: str) -> str:
+def to_asyncpg(url: str) -> str:
     """Convert sync SQLAlchemy URL to asyncpg.
 
     Neon URLs use libpq params (sslmode, channel_binding). SQLAlchemy's asyncpg
@@ -62,7 +60,9 @@ class Settings(BaseSettings):
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
-        return _to_asyncpg(get_main_settings().database_url)
+        from pagume_api.offline.router import get_router
+
+        return to_asyncpg(get_router().active_url())
 
 
 @lru_cache

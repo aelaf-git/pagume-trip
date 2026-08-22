@@ -169,6 +169,16 @@ def create_app(graph=None) -> FastAPI:
         snapshot = app.state.graph.get_state(config)
         if not snapshot or not snapshot.values:
             raise HTTPException(status_code=404, detail="Unknown thread_id")
+        if _interrupt_payload(snapshot) is None:
+            # Resuming without a live interrupt replays the graph and returns the
+            # previous answer, which reads as a duplicated reply to the user.
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "No booking is awaiting approval on this thread. "
+                    "Send a booking request (for example 'Book Trip') first."
+                ),
+            )
         app.state.graph.invoke(
             Command(
                 resume={

@@ -35,6 +35,7 @@ dev = [
 
 [project.scripts]
 pagume-api = "pagume_api.main:main"
+pagume-db-sync = "pagume_api.offline.sync:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

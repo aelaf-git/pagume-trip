@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     seed_on_startup: bool = True
     cloudinary_url: str = ""
 
+    # Offline mirror. Empty local_database_url keeps the API on database_url only.
+    local_database_url: str = ""
+    db_failover_enabled: bool = True
+    db_connect_timeout: int = 3
+    db_probe_interval: int = 15
+    db_sync_auto_push: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -42,7 +42,9 @@ Safety:
 
 Params:
 - Browse destination search: query empty.
-- City destination search: query is the city name.
+- City destination search: query is the city name only (e.g. "Lalibela").
+  Never put the full user sentence in query.
+- Open-ended "plan a trip" with no city: same as browse (query empty).
 - Specialists: copy destination_id, guests/seats, and dates from trip context.
 
 Reasoning: one short sentence — why this agent, and why not the others.

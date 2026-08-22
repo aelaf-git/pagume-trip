@@ -1,0 +1,93 @@
+name: pagume-trip
+
+services:
+  db:
+    # Matches the Neon server line (PostgreSQL 18) so pg_dump/pg_restore agree.
+    image: postgis/postgis:18-3.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pagume}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pagume}
+      POSTGRES_DB: ${POSTGRES_DB:-pagume}
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pagume} -d ${POSTGRES_DB:-pagume}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: ./api
+    restart: unless-stopped
+    environment:
+      # Primary target. Falls back to the local mirror when unreachable.
+      DATABASE_URL: ${NEON_DATABASE_URL:-}
+      LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL:-postgresql+psycopg://pagume:pagume@db:5432/pagume}
+      DB_FAILOVER_ENABLED: ${DB_FAILOVER_ENABLED:-true}
+      DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT:-3}
+      DB_PROBE_INTERVAL: ${DB_PROBE_INTERVAL:-30}
+      DB_SYNC_AUTO_PUSH: ${DB_SYNC_AUTO_PUSH:-true}
+      SEED_ON_STARTUP: ${SEED_ON_STARTUP:-true}
+      CLOUDINARY_URL: ${CLOUDINARY_URL:-}
+      HOST: 0.0.0.0
+      PORT: 8000
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  agents:
+    build:
+      context: ./agents
+    restart: unless-stopped
+    environment:
+      PAGUME_API_BASE_URL: http://api:8000
+      INVENTORY_CLIENT: http
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-20b}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      USE_LLM: ${USE_LLM:-true}
+      HOST: 0.0.0.0
+      PORT: 8100
+    ports:
+      - "${AGENTS_HOST_PORT:-8100}:8100"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  portals:
+    build:
+      context: ./portals
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    restart: unless-stopped
+    ports:
+      - "${PORTALS_HOST_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_started
+
+  # One-shot mirror refresh: docker compose --profile sync run --rm mirror
+  mirror:
+    image: postgis/postgis:18-3.6
+    profiles: ["sync"]
+    environment:
+      NEON_DATABASE_URL: ${NEON_DATABASE_URL:-}
+      LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL:-postgresql+psycopg://pagume:pagume@db:5432/pagume}
+    volumes:
+      - ./ops/mirror:/ops:ro
+      - mirror_dump:/dump
+    entrypoint: ["/ops/refresh.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  mirror_dump:
