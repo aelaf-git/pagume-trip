@@ -48,7 +48,12 @@ FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public'
   AND c.relkind = 'r'
-  AND c.relname <> 'sync_journal'
+  AND c.relname NOT IN (
+    'sync_journal',
+    'spatial_ref_sys',
+    'geometry_columns',
+    'geography_columns'
+  )
 ORDER BY c.relname;
 "
 

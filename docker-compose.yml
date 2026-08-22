@@ -12,7 +12,8 @@ services:
     ports:
       - "${DB_HOST_PORT:-5433}:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      # PG 18+ images expect the mount at /var/lib/postgresql (not .../data).
+      - db_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pagume} -d ${POSTGRES_DB:-pagume}"]
       interval: 10s
@@ -64,6 +65,9 @@ services:
   portals:
     build:
       context: ./portals
+      # Default: multi-stage Node build → nginx. Set PORTALS_DOCKER_TARGET=prebuilt
+      # when dist/ was produced on the host (e.g. flaky npm inside Docker).
+      target: ${PORTALS_DOCKER_TARGET:-runtime}
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
     restart: unless-stopped

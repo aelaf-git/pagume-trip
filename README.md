@@ -68,7 +68,14 @@ docker compose up -d --build
 | db | localhost:5433 | the local mirror (`DB_HOST_PORT`) |
 
 `VITE_API_BASE_URL` is baked into the portals bundle at build time, so changing
-it requires `docker compose build portals`.
+it requires rebuilding portals. The default Compose target builds Vite inside
+Docker (`runtime`). If npm inside Docker times out, build on the host and switch
+targets:
+
+```bash
+cd portals && VITE_API_BASE_URL=http://localhost:8000/api/v1 npm ci && npm run build
+PORTALS_DOCKER_TARGET=prebuilt docker compose up -d --build portals
+```
 
 Schema migrations are never run automatically:
 
