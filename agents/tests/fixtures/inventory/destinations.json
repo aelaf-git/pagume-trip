@@ -115,5 +115,18 @@
     "category": "cultural",
     "recommended_duration_days": 3,
     "verification_status": "VERIFIED"
+  },
+  {
+    "id": "dest_danakil",
+    "name": "Danakil Depression",
+    "description": "Otherworldly Afar desert of volcanoes, salt flats, and colorful hydrothermal springs around Erta Ale and Dallol.",
+    "region": "Afar",
+    "zone": "Northern Afar",
+    "woreda": "Berahle",
+    "latitude": 14.2417,
+    "longitude": 40.3,
+    "category": "nature",
+    "recommended_duration_days": 4,
+    "verification_status": "VERIFIED"
   }
 ]

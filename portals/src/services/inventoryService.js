@@ -198,8 +198,107 @@ export async function updateHotelImages(id, { coverImage, profilePicture, images
 export async function uploadHotelImage(file, kind = "gallery") {
   const form = new FormData();
   form.append("file", file);
-  const row = await api.postForm(`/uploads/images?kind=${encodeURIComponent(kind)}`, form);
+  const row = await api.postForm(
+    `/uploads/images?kind=${encodeURIComponent(kind)}&scope=hotels`,
+    form
+  );
   return row.url;
+}
+
+/** Tour package gallery / cover upload. scope=tours */
+export async function uploadTourImage(file, kind = "gallery") {
+  const form = new FormData();
+  form.append("file", file);
+  const row = await api.postForm(
+    `/uploads/images?kind=${encodeURIComponent(kind)}&scope=tours`,
+    form
+  );
+  return row.url;
+}
+
+/** Agency profile logo / cover. scope=agency */
+export async function uploadAgencyImage(file, kind = "logo") {
+  const form = new FormData();
+  form.append("file", file);
+  const row = await api.postForm(
+    `/uploads/images?kind=${encodeURIComponent(kind)}&scope=agency`,
+    form
+  );
+  return row.url;
+}
+
+/** Vehicle gallery upload. scope=vehicles */
+export async function uploadVehicleImage(file, kind = "gallery") {
+  const form = new FormData();
+  form.append("file", file);
+  const row = await api.postForm(
+    `/uploads/images?kind=${encodeURIComponent(kind)}&scope=vehicles`,
+    form
+  );
+  return row.url;
+}
+
+/** Car rental company logo / cover. scope=car_rental */
+export async function uploadCarRentalImage(file, kind = "logo") {
+  const form = new FormData();
+  form.append("file", file);
+  const row = await api.postForm(
+    `/uploads/images?kind=${encodeURIComponent(kind)}&scope=car_rental`,
+    form
+  );
+  return row.url;
+}
+
+export async function getProviderProfile() {
+  const p = await api.get("/providers/profile");
+  return {
+    id: p.id,
+    userId: p.user_id,
+    businessName: p.business_name,
+    category: p.category,
+    phone: p.phone ?? "",
+    address: p.address ?? "",
+    details: p.details ?? {},
+    status: p.status,
+    rejectionReason: p.rejection_reason ?? "",
+    statusNote: p.status_note ?? "",
+    email: p.email ?? "",
+    coverImage: p.details?.coverImage ?? "",
+    logo: p.details?.logo ?? p.details?.profilePicture ?? "",
+    description: p.details?.description ?? "",
+    website: p.details?.website ?? "",
+  };
+}
+
+export async function updateProviderProfile(data) {
+  const details = {
+    ...(data.details ?? {}),
+  };
+  if (data.coverImage !== undefined) details.coverImage = data.coverImage || "";
+  if (data.logo !== undefined) details.logo = data.logo || "";
+  if (data.description !== undefined) details.description = data.description || "";
+  if (data.website !== undefined) details.website = data.website || "";
+  const p = await api.put("/providers/profile", {
+    business_name: data.businessName,
+    phone: data.phone,
+    address: data.address,
+    details,
+  });
+  return {
+    id: p.id,
+    userId: p.user_id,
+    businessName: p.business_name,
+    category: p.category,
+    phone: p.phone ?? "",
+    address: p.address ?? "",
+    details: p.details ?? {},
+    status: p.status,
+    email: p.email ?? "",
+    coverImage: p.details?.coverImage ?? "",
+    logo: p.details?.logo ?? p.details?.profilePicture ?? "",
+    description: p.details?.description ?? "",
+    website: p.details?.website ?? "",
+  };
 }
 
 export { ensureHotelId };
@@ -328,7 +427,9 @@ export async function createVehicle(data) {
     deposit: data.deposit != null ? Number(data.deposit) : null,
     insurance_details: data.insurance || "",
     driver_available:
-      data.driverAvailability === "with_driver" || data.driverAvailability === true,
+      data.driverAvailability === "with_driver" ||
+      data.driverAvailability === "both" ||
+      data.driverAvailability === true,
     pickup_locations: data.pickupLocations ?? [],
     dropoff_locations: data.dropoffLocations ?? [],
     rental_policies: data.rentalPolicies || "",
@@ -355,7 +456,9 @@ export async function updateVehicle(id, data) {
     driver_available:
       data.driverAvailability === undefined
         ? undefined
-        : data.driverAvailability === "with_driver" || data.driverAvailability === true,
+        : data.driverAvailability === "with_driver" ||
+          data.driverAvailability === "both" ||
+          data.driverAvailability === true,
     pickup_locations: data.pickupLocations,
     dropoff_locations: data.dropoffLocations,
     rental_policies: data.rentalPolicies,

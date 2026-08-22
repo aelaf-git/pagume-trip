@@ -16,21 +16,32 @@ dependencies:
   riverpod_annotation: ^2.3.0
 
   # ============================================
-  # NAVIGATION
+  # NAVIGATION (YOUR VERSION)
   # ============================================
   go_router: ^12.0.0
 
   # ============================================
-  # SECURE STORAGE
+  # SECURE STORAGE (FOR LOGIN)
   # ============================================
   flutter_secure_storage: ^9.0.0
 
   # ============================================
-  # UI & DESIGN
+  # DATA PERSISTENCE (FOR SAVING TRIPS)
+  # ============================================
+  shared_preferences: ^2.2.2
+
+  # ============================================
+  # MAP & URL LAUNCHER
+  # ============================================
+  url_launcher: ^6.2.1
+
+  # ============================================
+  # UI & DESIGN (AELAF'S ADDITIONS)
   # ============================================
   google_fonts: ^6.1.0
   flutter_svg: ^2.0.9
   cached_network_image: ^3.3.0
+  cupertino_icons: ^1.0.6
 
   # ============================================
   # NETWORKING
@@ -44,6 +55,7 @@ dependencies:
   # ============================================
   web_socket_channel: ^2.4.0
   flutter_markdown: ^0.7.7+1
+  uuid: ^4.6.0
 
 dev_dependencies:
   flutter_test:
@@ -57,6 +69,16 @@ dev_dependencies:
   retrofit_generator: ^7.0.0
 
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/pagume_logo.png"
+  adaptive_icon_background: "#0A7E3D"
+  adaptive_icon_foreground: "assets/images/pagume_logo.png"
+  remove_alpha_ios: true
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true

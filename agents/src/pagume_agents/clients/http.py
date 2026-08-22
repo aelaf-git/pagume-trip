@@ -15,6 +15,24 @@ def _query_params(params: dict) -> dict:
     return {key: value for key, value in params.items() if value is not None and value != ""}
 
 
+def _raise_for_inventory(response: httpx.Response) -> None:
+    """Map inventory HTTP failures to InventoryUnavailableError (no raw crash)."""
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        detail = (exc.response.text or "").strip()
+        if len(detail) > 300:
+            detail = detail[:300] + "…"
+        raise InventoryUnavailableError(
+            f"Inventory API {exc.response.status_code} for "
+            f"{exc.request.url.path}: {detail or exc.response.reason_phrase}"
+        ) from exc
+    except httpx.RequestError as exc:
+        raise InventoryUnavailableError(
+            f"Inventory API unreachable at {exc.request.url if exc.request else '?'}: {exc}"
+        ) from exc
+
+
 class HttpInventoryClient:
     """Calls Pagume REST endpoints. Teammates implement the matching API."""
 
@@ -42,15 +60,16 @@ class HttpInventoryClient:
                 "/v1/destinations",
                 params=_query_params({"q": query, "region": region}),
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return [Destination.model_validate(row) for row in response.json()["results"]]
+
 
     def get_destination(self, destination_id: str) -> Destination | None:
         with self._client() as client:
             response = client.get(f"/v1/destinations/{destination_id}")
             if response.status_code == 404:
                 return None
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return Destination.model_validate(response.json())
 
     def find_nearby_destinations(
@@ -61,7 +80,7 @@ class HttpInventoryClient:
                 f"/v1/destinations/{destination_id}/nearby",
                 params={"radius_km": radius_km},
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return [Destination.model_validate(row) for row in response.json()["results"]]
 
     def search_hotels(
@@ -85,7 +104,7 @@ class HttpInventoryClient:
                     }
                 ),
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return [Hotel.model_validate(row) for row in response.json()["results"]]
 
     def get_hotel_details(self, hotel_id: str) -> Hotel | None:
@@ -93,7 +112,7 @@ class HttpInventoryClient:
             response = client.get(f"/v1/hotels/{hotel_id}")
             if response.status_code == 404:
                 return None
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return Hotel.model_validate(response.json())
 
     def search_rooms(
@@ -107,7 +126,7 @@ class HttpInventoryClient:
                 f"/v1/hotels/{hotel_id}/rooms",
                 params=_query_params({"guests": guests, "max_price_etb": max_price_etb}),
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return [HotelRoom.model_validate(row) for row in response.json()["results"]]
 
     def check_hotel_availability(
@@ -118,7 +137,7 @@ class HttpInventoryClient:
                 f"/v1/hotels/{hotel_id}/rooms/{room_id}/availability",
                 params={"check_in": check_in, "check_out": check_out},
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return bool(response.json()["available"])
 
     def search_transport(
@@ -142,7 +161,7 @@ class HttpInventoryClient:
             return []
         with self._client() as client:
             response = client.get("/v1/transport", params=params)
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return [Vehicle.model_validate(row) for row in response.json()["results"]]
 
     def search_car_rentals(
@@ -166,7 +185,7 @@ class HttpInventoryClient:
                     }
                 ),
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return [Vehicle.model_validate(row) for row in response.json()["results"]]
 
     def check_vehicle_availability(
@@ -177,7 +196,7 @@ class HttpInventoryClient:
                 f"/v1/vehicles/{vehicle_id}/availability",
                 params={"start_date": start_date, "end_date": end_date},
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return bool(response.json()["available"])
 
     def search_tour_packages(
@@ -201,7 +220,7 @@ class HttpInventoryClient:
                     }
                 ),
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return [TourPackage.model_validate(row) for row in response.json()["results"]]
 
     def get_package_details(self, package_id: str) -> TourPackage | None:
@@ -209,7 +228,7 @@ class HttpInventoryClient:
             response = client.get(f"/v1/tours/{package_id}")
             if response.status_code == 404:
                 return None
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return TourPackage.model_validate(response.json())
 
     def check_tour_availability(
@@ -220,13 +239,13 @@ class HttpInventoryClient:
                 f"/v1/tours/{package_id}/availability",
                 params={"date": date, "guests": guests},
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return bool(response.json()["available"])
 
     def create_trip(self, trip: Trip) -> Trip:
         with self._client() as client:
             response = client.post("/v1/trips", json=trip.model_dump())
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return Trip.model_validate(response.json())
 
     def update_itinerary(self, trip_id: str, items: list[ItineraryItem]) -> Trip:
@@ -235,7 +254,7 @@ class HttpInventoryClient:
                 f"/v1/trips/{trip_id}/itinerary",
                 json=[item.model_dump() for item in items],
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return Trip.model_validate(response.json())
 
     def prepare_booking(
@@ -253,7 +272,7 @@ class HttpInventoryClient:
             )
             if response.status_code == 409:
                 raise InventoryUnavailableError(response.text)
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return Booking.model_validate(response.json())
 
     def confirm_booking(self, booking_id: str, *, idempotency_key: str) -> Booking:
@@ -264,7 +283,7 @@ class HttpInventoryClient:
             )
             if response.status_code == 409:
                 raise InventoryUnavailableError(response.text)
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return Booking.model_validate(response.json())
 
     def cancel_booking(self, booking_id: str, *, idempotency_key: str) -> Booking:
@@ -273,5 +292,5 @@ class HttpInventoryClient:
                 f"/v1/bookings/{booking_id}/cancel",
                 headers={"Idempotency-Key": idempotency_key},
             )
-            response.raise_for_status()
+            _raise_for_inventory(response)
             return Booking.model_validate(response.json())

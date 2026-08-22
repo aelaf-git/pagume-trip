@@ -209,7 +209,10 @@ def make_respond_node(llm: Any | None = None) -> Callable:
                         HumanMessage(content=payload),
                     ]
                 )
-                return response.content if hasattr(response, "content") else str(response)
+                text = response.content if hasattr(response, "content") else str(response)
+                if text and str(text).strip():
+                    return str(text).strip()
+                return fallback
             except Exception:  # noqa: BLE001
                 return fallback
 

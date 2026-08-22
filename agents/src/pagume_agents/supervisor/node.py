@@ -130,7 +130,9 @@ def fallback_decision(state: TripState) -> SupervisorDecision:
         return SupervisorDecision(next_agent="respond", task="present")
 
     if not results.get("destination"):
-        query = "" if ctx.browse_destinations else (ctx.destination_query or text)
+        # Never pass the raw user sentence as q= — it matches no place names.
+        # Empty query lists the verified catalog (browse / open-ended "plan a trip").
+        query = "" if ctx.browse_destinations else (ctx.destination_query or "")
         return SupervisorDecision(
             next_agent="destination",
             task="search",

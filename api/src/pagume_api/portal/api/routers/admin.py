@@ -27,6 +27,7 @@ from pagume_api.portal.schemas.destination import (
 )
 from pagume_api.portal.schemas.inventory import DriverProfileResponse
 from pagume_api.portal.schemas.ops import (
+    ActivityEventResponse,
     AgentRunLogResponse,
     DashboardStats,
     DocumentMeta,
@@ -36,6 +37,7 @@ from pagume_api.portal.schemas.ops import (
     PlatformSettingUpdate,
     PortalBookingResponse,
     PortalPaymentResponse,
+    PortalReviewResponse,
     ProviderProfileResponse,
     ProviderStatusUpdate,
 )
@@ -405,6 +407,15 @@ async def admin_list_payments(
     return (await db.execute(select(PortalPayment))).scalars().all()
 
 
+@router.get("/reviews", response_model=List[PortalReviewResponse])
+async def admin_list_reviews(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    stmt = select(PortalReview).order_by(PortalReview.id.desc())
+    return (await db.execute(stmt)).scalars().all()
+
+
 # ── Settings ────────────────────────────────────────────────────────────────
 
 
@@ -504,3 +515,193 @@ async def list_agent_runs(
 ):
     stmt = select(AgentRunLog).order_by(AgentRunLog.id.desc()).limit(limit)
     return (await db.execute(stmt)).scalars().all()
+
+
+_ACTIVITY_TYPES = frozenset(
+    {"provider", "moderation", "agent_run", "review"}
+)
+
+
+def _parse_activity_types(raw: str | None) -> set[str] | None:
+    if not raw or not raw.strip():
+        return None
+    parts = {p.strip().lower() for p in raw.split(",") if p.strip()}
+    unknown = parts - _ACTIVITY_TYPES
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown activity type(s): {', '.join(sorted(unknown))}. "
+            f"Allowed: {', '.join(sorted(_ACTIVITY_TYPES))}",
+        )
+    return parts
+
+
+async def _user_label_map(db: AsyncSession, user_ids: set[int]) -> dict[int, str]:
+    if not user_ids:
+        return {}
+    rows = (
+        await db.execute(select(User).where(User.id.in_(list(user_ids))))
+    ).scalars().all()
+    return {
+        u.id: (u.full_name or u.email or f"user:{u.id}")
+        for u in rows
+    }
+
+
+@router.get("/activities", response_model=List[ActivityEventResponse])
+async def list_platform_activities(
+    type: Optional[str] = Query(
+        None,
+        description="Filter by type (comma-separated): provider,moderation,agent_run,review",
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Chronological feed assembled from portal DB tables (no mock data)."""
+    wanted = _parse_activity_types(type)
+    # Fetch a generous slice per source so merge+pagination stays accurate for typical admin use.
+    per_source = min(200, offset + limit)
+
+    events: list[ActivityEventResponse] = []
+    provider_ids: set[int] = set()
+
+    if wanted is None or "provider" in wanted:
+        profiles = (
+            await db.execute(
+                select(ProviderProfile)
+                .order_by(
+                    ProviderProfile.registered_at.desc().nullslast(),
+                    ProviderProfile.id.desc(),
+                )
+                .limit(per_source)
+            )
+        ).scalars().all()
+        for pr in profiles:
+            provider_ids.add(pr.user_id)
+            events.append(
+                ActivityEventResponse(
+                    id=f"provider:{pr.id}",
+                    type="provider",
+                    title=pr.business_name or "Provider registration",
+                    summary=f"{pr.category} · status {pr.status}",
+                    status=pr.status,
+                    entity_label=pr.business_name,
+                    occurred_at=pr.registered_at,
+                    meta={
+                        "profile_id": pr.id,
+                        "user_id": pr.user_id,
+                        "category": pr.category,
+                        "phone": pr.phone,
+                        "address": pr.address,
+                    },
+                )
+            )
+
+    if wanted is None or "moderation" in wanted:
+        items = (
+            await db.execute(
+                select(ModerationItem)
+                .order_by(
+                    ModerationItem.uploaded_at.desc().nullslast(),
+                    ModerationItem.id.desc(),
+                )
+                .limit(per_source)
+            )
+        ).scalars().all()
+        for m in items:
+            provider_ids.add(m.provider_id)
+            events.append(
+                ActivityEventResponse(
+                    id=f"moderation:{m.id}",
+                    type="moderation",
+                    title=m.title or "Moderation item",
+                    summary=(
+                        f"{m.content_type}"
+                        + (f" · {m.provider_name}" if m.provider_name else "")
+                        + (f" · {m.category}" if m.category else "")
+                    ),
+                    status=m.status,
+                    entity_label=m.provider_name,
+                    occurred_at=m.uploaded_at,
+                    meta={
+                        "moderation_id": m.id,
+                        "provider_id": m.provider_id,
+                        "content_type": m.content_type,
+                        "content_ref_id": m.content_ref_id,
+                        "flag_reason": m.flag_reason,
+                    },
+                )
+            )
+
+    if wanted is None or "agent_run" in wanted:
+        runs = (
+            await db.execute(
+                select(AgentRunLog)
+                .order_by(AgentRunLog.created_at.desc().nullslast(), AgentRunLog.id.desc())
+                .limit(per_source)
+            )
+        ).scalars().all()
+        for r in runs:
+            events.append(
+                ActivityEventResponse(
+                    id=f"agent_run:{r.id}",
+                    type="agent_run",
+                    title=r.agent or "Agent run",
+                    summary=r.task or "—",
+                    status=r.status,
+                    occurred_at=r.created_at,
+                    meta={
+                        "run_id": r.id,
+                        "duration_ms": r.duration_ms,
+                        "token_usage": r.token_usage or {},
+                    },
+                )
+            )
+
+    if wanted is None or "review" in wanted:
+        reviews = (
+            await db.execute(
+                select(PortalReview)
+                .order_by(PortalReview.created_at.desc().nullslast(), PortalReview.id.desc())
+                .limit(per_source)
+            )
+        ).scalars().all()
+        for rv in reviews:
+            provider_ids.add(rv.provider_id)
+            comment_snip = (rv.comment or "").strip()
+            if len(comment_snip) > 120:
+                comment_snip = comment_snip[:117] + "…"
+            events.append(
+                ActivityEventResponse(
+                    id=f"review:{rv.id}",
+                    type="review",
+                    title=f"{rv.rating}★ by {rv.author_name}",
+                    summary=comment_snip or "No comment",
+                    status=rv.status,
+                    actor_label=rv.author_name,
+                    occurred_at=rv.created_at,
+                    meta={
+                        "review_id": rv.id,
+                        "provider_id": rv.provider_id,
+                        "rating": rv.rating,
+                    },
+                )
+            )
+
+    labels = await _user_label_map(db, provider_ids)
+    for ev in events:
+        pid = ev.meta.get("provider_id") or ev.meta.get("user_id")
+        if pid and not ev.actor_label:
+            ev.actor_label = labels.get(pid)
+        if pid and not ev.entity_label and ev.type != "provider":
+            ev.entity_label = labels.get(pid)
+
+    def _sort_key(ev: ActivityEventResponse):
+        # Newest first; missing timestamps sort last among peers via min datetime
+        ts = ev.occurred_at or datetime.min
+        return (ts, ev.id)
+
+    events.sort(key=_sort_key, reverse=True)
+    return events[offset : offset + limit]

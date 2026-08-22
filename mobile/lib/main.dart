@@ -10,6 +10,13 @@ import 'features/profile/profile_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/signup_screen.dart';
+import 'features/booking/booking_screen.dart';
+import 'features/booking/screens/destination_detail_screen.dart';
+import 'features/booking/screens/hotel_detail_screen.dart';
+import 'features/booking/screens/tour_detail_screen.dart';
+import 'features/booking/screens/car_detail_screen.dart';
+import 'features/booking/screens/checkout_screen.dart';
+import 'features/booking/screens/confirmation_screen.dart';
 
 void main() {
   runApp(
@@ -24,9 +31,7 @@ class PagumeTripApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch for auth state changes
-    final authState = ref.watch(userProvider);
-    final isAuthenticated = authState.isAuthenticated;
+    ref.watch(userProvider);
 
     return MaterialApp.router(
       title: 'Pagume Trip',
@@ -48,31 +53,23 @@ class PagumeTripApp extends ConsumerWidget {
   }
 }
 
-// MainScreen with Bottom Navigation
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key, required this.child});
-  final Widget child;
+  const MainScreen({super.key, required this.navigationShell});
+  final StatefulNavigationShell navigationShell;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
-  final List<String> _routes = ['/home', '/chat', '/trips', '/profile'];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: widget.child,
+      body: widget.navigationShell,
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
+        currentIndex: widget.navigationShell.currentIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          context.go(_routes[index]);
+          widget.navigationShell.goBranch(index);
         },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primary,
@@ -96,6 +93,11 @@ class _MainScreenState extends State<MainScreen> {
             label: 'My Trips',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.edit_note_outlined),
+            activeIcon: Icon(Icons.edit_note),
+            label: 'Book',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profile',
@@ -106,78 +108,129 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// GoRouter Configuration with Auth Redirect
 final GoRouter _router = GoRouter(
   initialLocation: '/',
-  // This runs before every navigation to check auth
   redirect: (context, state) {
-    // Get auth state from Riverpod
     final authState = ProviderScope.containerOf(context).read(userProvider);
     final isAuthenticated = authState.isAuthenticated;
     final isOnAuthScreen = state.matchedLocation == '/login' ||
         state.matchedLocation == '/signup' ||
         state.matchedLocation == '/';
 
-    // If NOT authenticated and NOT on auth screen → go to login
     if (!isAuthenticated && !isOnAuthScreen) {
       return '/login';
     }
-
-    // If authenticated and on auth screen → go to home
     if (isAuthenticated && isOnAuthScreen) {
       return '/home';
     }
-
-    // Otherwise, stay where we are
     return null;
   },
   routes: [
-    // Splash Screen
     GoRoute(
       path: '/',
       name: 'splash',
       builder: (context, state) => const SplashScreen(),
     ),
-
-    // Login Screen
     GoRoute(
       path: '/login',
       name: 'login',
       builder: (context, state) => const LoginScreen(),
     ),
-
-    // Sign-up Screen
     GoRoute(
       path: '/signup',
       name: 'signup',
       builder: (context, state) => const SignupScreen(),
     ),
-
-    // ShellRoute for screens WITH bottom navigation
-    ShellRoute(
-      builder: (context, state, child) {
-        return MainScreen(child: child);
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return MainScreen(navigationShell: navigationShell);
       },
-      routes: [
-        GoRoute(
-          path: '/home',
-          name: 'home',
-          builder: (context, state) => const HomeScreen(),
+      branches: [
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/home',
+              name: 'home',
+              builder: (context, state) => const HomeScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/chat',
-          name: 'chat',
-          builder: (context, state) => const ChatScreen(),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/chat',
+              name: 'chat',
+              builder: (context, state) => const ChatScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/trips',
-          name: 'trips',
-          builder: (context, state) => const TripPlannerScreen(),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/trips',
+              name: 'trips',
+              builder: (context, state) => const TripPlannerScreen(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/profile',
-          name: 'profile',
-          builder: (context, state) => const ProfileScreen(),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/booking',
+              name: 'booking',
+              builder: (context, state) => const BookingScreen(),
+              routes: [
+                GoRoute(
+                  path: 'destinations/:id',
+                  name: 'destinationDetail',
+                  builder: (context, state) => DestinationDetailScreen(
+                    destinationId: state.pathParameters['id']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'hotels/:id',
+                  name: 'hotelDetail',
+                  builder: (context, state) => HotelDetailScreen(
+                    hotelId: state.pathParameters['id']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'tours/:id',
+                  name: 'tourDetail',
+                  builder: (context, state) => TourDetailScreen(
+                    tourId: state.pathParameters['id']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'cars/:id',
+                  name: 'carDetail',
+                  builder: (context, state) => CarDetailScreen(
+                    vehicleId: state.pathParameters['id']!,
+                    destinationId: state.uri.queryParameters['destinationId'],
+                  ),
+                ),
+                GoRoute(
+                  path: 'checkout',
+                  name: 'checkout',
+                  builder: (context, state) => const CheckoutScreen(),
+                ),
+                GoRoute(
+                  path: 'confirmation',
+                  name: 'confirmation',
+                  builder: (context, state) => const ConfirmationScreen(),
+                ),
+              ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/profile',
+              name: 'profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
+          ],
         ),
       ],
     ),

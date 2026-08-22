@@ -20,14 +20,15 @@ import ProviderPayments from "./pages/provider/ProviderPayments";
 import ProviderReviews from "./pages/provider/ProviderReviews";
 import ProviderProfile from "./pages/provider/ProviderProfile";
 import HotelProperty from "./pages/hotel/HotelProperty";
+import AgencyProfile from "./pages/agency/AgencyProfile";
+import CarRentalProfile from "./pages/car-rental/CarRentalProfile";
 import MarketplaceBrowse from "./pages/marketplace/MarketplaceBrowse";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminActivities from "./pages/admin/AdminActivities";
 import AdminProviders from "./pages/admin/AdminProviders";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminDestinations from "./pages/admin/AdminDestinations";
-import AdminBookings from "./pages/admin/AdminBookings";
-import AdminPayments from "./pages/admin/AdminPayments";
 import AdminSettings from "./pages/admin/AdminSettings";
 
 function ProviderRedirect() {
@@ -66,13 +67,25 @@ export default function App() {
 
       <Route element={<ProtectedRoute allowedRoles={["TOUR_AGENCY"]} />}>
         <Route path="/agency" element={<AgencyLayout />}>
-          {providerPages}
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<ProviderDashboard />} />
+          <Route path="listings" element={<ProviderListings />} />
+          <Route path="bookings" element={<ProviderBookings />} />
+          <Route path="payments" element={<ProviderPayments />} />
+          <Route path="reviews" element={<ProviderReviews />} />
+          <Route path="profile" element={<AgencyProfile />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={["CAR_RENTAL"]} />}>
         <Route path="/car-rental" element={<CarRentalLayout />}>
-          {providerPages}
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<ProviderDashboard />} />
+          <Route path="listings" element={<ProviderListings />} />
+          <Route path="bookings" element={<ProviderBookings />} />
+          <Route path="payments" element={<ProviderPayments />} />
+          <Route path="reviews" element={<ProviderReviews />} />
+          <Route path="profile" element={<CarRentalProfile />} />
         </Route>
       </Route>
 
@@ -95,11 +108,10 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="destinations" element={<AdminDestinations />} />
           <Route path="providers" element={<AdminProviders />} />
           <Route path="users" element={<AdminUsers />} />
-          <Route path="destinations" element={<AdminDestinations />} />
-          <Route path="bookings" element={<AdminBookings />} />
-          <Route path="payments" element={<AdminPayments />} />
+          <Route path="activities" element={<AdminActivities />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Route>

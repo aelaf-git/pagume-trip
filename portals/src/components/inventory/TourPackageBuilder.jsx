@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, PlusCircle, Image as ImageIcon, X, Compass } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Pencil, Trash2, PlusCircle, Compass } from "lucide-react";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import Input from "../common/Input";
@@ -7,10 +8,11 @@ import Select from "../common/Select";
 import Textarea from "../common/Textarea";
 import Modal from "../common/Modal";
 import ConfirmDialog from "../common/ConfirmDialog";
+import { ImageGalleryField } from "../common/ImageUploadFields";
 import { DESTINATIONS, DESTINATION_LABELS } from "../../constants/inventoryOptions";
-import { placeholderImage } from "../../constants/mockInventoryData";
 import { validatePackage } from "../../utils/inventoryValidation";
 import * as inventoryService from "../../services/inventoryService";
+import { queryKeys, STALE_TOURS_MS } from "../../lib/queryKeys";
 
 const EMPTY_FORM = {
   name: "",
@@ -37,8 +39,6 @@ const PACKAGE_TYPES = [
   { value: "multi_day", label: "Multi-day tour" },
   { value: "custom", label: "Custom tour" },
 ];
-
-const generateId = () => `dyn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 function StringListEditor({ label, hint, items, placeholder, onChange, addLabel = "Add item" }) {
   const addItem = () => onChange([...items, ""]);
@@ -80,19 +80,32 @@ function StringListEditor({ label, hint, items, placeholder, onChange, addLabel 
   );
 }
 
+function imageUrlsFromPackage(pkg) {
+  return (pkg.images ?? [])
+    .map((image) => (typeof image === "string" ? image : image?.url))
+    .filter(Boolean);
+}
+
 export default function TourPackageBuilder() {
-  const [packages, setPackages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
-  const [imageUrl, setImageUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [notice, setNotice] = useState(null);
   const noticeTimer = useRef(null);
+
+  const packagesQuery = useQuery({
+    queryKey: queryKeys.tours,
+    queryFn: () => inventoryService.getPackages(),
+    staleTime: STALE_TOURS_MS,
+  });
+
+  const packages = packagesQuery.data ?? [];
+  const loading = packagesQuery.isLoading;
 
   const showNotice = (message) => {
     setNotice(message);
@@ -102,21 +115,10 @@ export default function TourPackageBuilder() {
 
   useEffect(() => () => clearTimeout(noticeTimer.current), []);
 
-  const loadPackages = useCallback(async () => {
-    const data = await inventoryService.getPackages();
-    setPackages(data);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadPackages();
-  }, [loadPackages]);
-
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
     setErrors({});
-    setImageUrl("");
     setModalOpen(true);
   };
 
@@ -140,31 +142,16 @@ export default function TourPackageBuilder() {
       ),
       guide: pkg.guide ?? "",
       cancellationPolicy: pkg.cancellationPolicy ?? "",
-      images: pkg.images ?? [],
+      images: imageUrlsFromPackage(pkg),
       availabilityDates: pkg.availabilityDates ?? [],
     });
     setErrors({});
-    setImageUrl("");
     setModalOpen(true);
   };
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  const addImage = () => {
-    const trimmed = imageUrl.trim();
-    const name = `Image ${(form.images ?? []).length + 1}`;
-    handleChange("images", [
-      ...(form.images ?? []),
-      { id: generateId(), url: trimmed || placeholderImage(name), name },
-    ]);
-    setImageUrl("");
-  };
-
-  const removeImage = (imageId) => {
-    handleChange("images", (form.images ?? []).filter((image) => image.id !== imageId));
   };
 
   const handleSave = async () => {
@@ -176,17 +163,22 @@ export default function TourPackageBuilder() {
       name: form.name,
       description: form.description,
       destination: form.destination,
+      packageType: form.packageType || "multi_day",
       durationDays: Number(form.durationDays),
       price: Number(form.price),
       minParticipants: Number(form.minParticipants),
       maxParticipants: Number(form.maxParticipants),
       included: form.included.filter((item) => item.trim() !== ""),
       excluded: form.excluded.filter((item) => item.trim() !== ""),
+      accommodation: form.accommodation || "",
+      transportation: form.transportation || "",
       activities: form.activities
         .filter((item) => item.trim() !== "")
         .map((name, index) => ({ id: `act-${editing?.id ?? "new"}-${index}`, name })),
+      guide: form.guide || "",
       cancellationPolicy: form.cancellationPolicy,
       images: form.images,
+      availabilityDates: form.availabilityDates ?? [],
     };
 
     try {
@@ -198,7 +190,7 @@ export default function TourPackageBuilder() {
         showNotice("Package created.");
       }
       setModalOpen(false);
-      await loadPackages();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tours });
     } finally {
       setSaving(false);
     }
@@ -210,7 +202,7 @@ export default function TourPackageBuilder() {
       await inventoryService.deletePackage(deleting.id);
       showNotice("Package deleted.");
       setDeleting(null);
-      await loadPackages();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tours });
     } finally {
       setDeletingId(null);
     }
@@ -247,6 +239,7 @@ export default function TourPackageBuilder() {
               <thead>
                 <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-400">
                   <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 font-medium">Destination</th>
                   <th className="px-4 py-3 font-medium">Duration</th>
                   <th className="px-4 py-3 font-medium">Price</th>
@@ -260,14 +253,23 @@ export default function TourPackageBuilder() {
                 {packages.map((pkg) => (
                   <tr key={pkg.id} className="border-b border-gray-100 last:border-0">
                     <td className="px-4 py-3 font-medium text-gray-900">{pkg.name}</td>
-                    <td className="px-4 py-3 text-gray-700">{DESTINATION_LABELS[pkg.destination] ?? pkg.destination}</td>
-                    <td className="px-4 py-3 text-gray-700">{pkg.durationDays} day{pkg.durationDays === 1 ? "" : "s"}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {PACKAGE_TYPES.find((t) => t.value === pkg.packageType)?.label ??
+                        pkg.packageType ??
+                        "—"}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {DESTINATION_LABELS[pkg.destination] ?? pkg.destination}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {pkg.durationDays} day{pkg.durationDays === 1 ? "" : "s"}
+                    </td>
                     <td className="px-4 py-3 text-gray-700">ETB {pkg.price.toLocaleString()}</td>
                     <td className="px-4 py-3 text-gray-700">
                       {pkg.minParticipants}–{pkg.maxParticipants}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{(pkg.activities ?? []).length}</td>
-                    <td className="px-4 py-3 text-gray-700">{(pkg.images ?? []).length}</td>
+                    <td className="px-4 py-3 text-gray-700">{imageUrlsFromPackage(pkg).length}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -457,43 +459,13 @@ export default function TourPackageBuilder() {
             required
           />
 
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Images</p>
-            <div className="flex flex-wrap gap-3">
-              {(form.images ?? []).map((image) => (
-                <div key={image.id} className="relative h-28 w-36 overflow-hidden rounded-lg border border-gray-200">
-                  {image.url ? (
-                    <img src={image.url} alt={image.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
-                      <ImageIcon className="h-6 w-6" />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeImage(image.id)}
-                    className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 text-gray-600 shadow hover:text-red-600"
-                    aria-label={`Remove image ${image.name}`}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="absolute bottom-0 left-0 right-0 truncate bg-black/50 px-2 py-0.5 text-xs text-white">
-                    {image.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={imageUrl}
-                placeholder="Paste an image URL, or leave blank for a placeholder"
-                onChange={(e) => setImageUrl(e.target.value)}
-              />
-              <Button variant="outline" onClick={addImage} className="shrink-0">
-                <Plus className="h-4 w-4" /> Add image
-              </Button>
-            </div>
-          </div>
+          <ImageGalleryField
+            label="Package photos"
+            hint="Upload images to Cloudinary for this tour."
+            value={form.images}
+            onChange={(urls) => handleChange("images", urls)}
+            onUpload={(file) => inventoryService.uploadTourImage(file, "gallery")}
+          />
         </div>
       </Modal>
 
