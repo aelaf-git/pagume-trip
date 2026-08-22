@@ -72,6 +72,7 @@ class ChatState {
     String? threadId,
     List<ChatThread>? threads,
     List<TripProposal>? savedTrips,
+    bool clearProposal = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -79,7 +80,8 @@ class ChatState {
       isProcessing: isProcessing ?? this.isProcessing,
       isConnected: isConnected ?? this.isConnected,
       error: error ?? this.error,
-      currentProposal: currentProposal ?? this.currentProposal,
+      currentProposal:
+          clearProposal ? null : (currentProposal ?? this.currentProposal),
       threadId: threadId ?? this.threadId,
       threads: threads ?? this.threads,
       savedTrips: savedTrips ?? this.savedTrips,
@@ -241,41 +243,66 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       reply ??= "I've processed your request.";
 
-      // Handle proposed options
+      // Handle proposed options + booking approval interrupt
       TripProposal? proposal;
-      final selectedOption = data['selected_option'];
+      final selectedRaw = data['selected_option'];
+      final pendingRaw = data['pending_approval'];
+      final selectedOption = selectedRaw is Map
+          ? Map<String, dynamic>.from(selectedRaw)
+          : null;
+      final pending =
+          pendingRaw is Map ? Map<String, dynamic>.from(pendingRaw) : null;
+      final interrupted = data['interrupted'] == true || pending != null;
+
       if (selectedOption != null) {
         final items = selectedOption['items'] as List?;
         final details = items != null
             ? 'Includes: ${items.map((i) => i['name']).join(', ')}'
             : 'Custom planned itinerary';
         proposal = TripProposal(
-          id: selectedOption['option_id'] ??
+          id: selectedOption['option_id']?.toString() ??
               DateTime.now().millisecondsSinceEpoch.toString(),
-          destination: selectedOption['label'] ?? 'Custom Proposal',
+          destination: selectedOption['label']?.toString() ?? 'Custom Proposal',
           price: (selectedOption['total_etb'] as num?)?.toDouble() ?? 0.0,
-          currency: 'ETB',
+          currency: selectedOption['currency']?.toString() ?? 'ETB',
           details: details,
-          duration: 'Dynamic',
+          duration: 'Planned trip',
+          requiresConfirmation: false,
         );
       }
 
-      // Handle pending approval (interrupt)
-      final pending = data['pending_approval'];
       if (pending != null) {
         final items = pending['items'] as List?;
-        final details = items != null
-            ? 'Confirming booking for: ${items.map((i) => i['name']).join(', ')}'
-            : 'Booking approval request';
+        final names = items
+                ?.map((i) => (i as Map)['name']?.toString() ?? '')
+                .where((n) => n.isNotEmpty)
+                .join(', ') ??
+            '';
+        final label = selectedOption?['label']?.toString();
         proposal = TripProposal(
-          id: pending['booking_id'] ??
+          id: pending['booking_id']?.toString() ??
               DateTime.now().millisecondsSinceEpoch.toString(),
-          destination: 'Authorization Required',
-          price: (pending['total_etb'] as num?)?.toDouble() ?? 0.0,
-          currency: pending['currency'] ?? 'ETB',
-          details: details,
-          duration: 'N/A',
+          bookingId: pending['booking_id']?.toString(),
+          destination: (label != null && label.isNotEmpty)
+              ? label
+              : (names.isNotEmpty ? names : 'Trip booking'),
+          price: (pending['total_etb'] as num?)?.toDouble() ??
+              proposal?.price ??
+              0.0,
+          currency: pending['currency']?.toString() ??
+              proposal?.currency ??
+              'ETB',
+          details: names.isNotEmpty
+              ? 'Includes: $names'
+              : (proposal?.details ?? 'Please confirm to complete your booking.'),
+          duration: proposal?.duration ?? 'Ready to book',
+          requiresConfirmation: true,
         );
+        if (reply.trim().isEmpty ||
+            reply == "I've processed your request.") {
+          reply =
+              'Your booking is ready. Please confirm to authorize and complete it.';
+        }
       }
 
       final responseId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -290,6 +317,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           ),
         ],
         currentProposal: proposal,
+        clearProposal: proposal == null && !interrupted,
         isProcessing: false,
         threadId: threadId,
       );
@@ -354,6 +382,17 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(currentProposal: proposal);
   }
 
+  String? _replyFrom(dynamic data) {
+    final direct = data['message'];
+    if (direct is String && direct.isNotEmpty) return direct;
+    final msgs = data['messages'] as List?;
+    if (msgs != null && msgs.isNotEmpty) {
+      final lastMsg = msgs.last;
+      if (lastMsg['role'] == 'assistant') return lastMsg['content'] as String?;
+    }
+    return null;
+  }
+
   Future<void> acceptProposal() async {
     final proposal = state.currentProposal;
     final threadId = state.threadId;
@@ -362,6 +401,44 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(isProcessing: true, error: null);
 
     try {
+      // The booking agent only pauses for approval after an explicit booking
+      // request. Approving before that replays the plan instead of booking it.
+      if (!proposal.requiresConfirmation) {
+        final intent = await _dio.post(
+          '$_baseUrl/v1/runs',
+          data: {
+            'thread_id': threadId,
+            'message': 'Book Trip',
+            'reset': false,
+          },
+        );
+        final intentData = intent.data;
+        final awaitingApproval = intentData['interrupted'] == true ||
+            intentData['pending_approval'] != null;
+
+        if (!awaitingApproval) {
+          final pendingId = DateTime.now().millisecondsSinceEpoch.toString();
+          state = state.copyWith(
+            messages: [
+              ...state.messages,
+              ChatMessage(
+                id: pendingId,
+                text: '',
+                isUser: false,
+                timestamp: DateTime.now(),
+              ),
+            ],
+            isProcessing: false,
+          );
+          await _streamText(
+            pendingId,
+            _replyFrom(intentData) ??
+                'I could not start that booking. Please try again.',
+          );
+          return;
+        }
+      }
+
       final response = await _dio.post(
         '$_baseUrl/v1/runs/$threadId/approve',
         data: {
@@ -371,19 +448,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
 
       final data = response.data;
-      String? reply = data['message'];
-
-      if (reply == null || reply.isEmpty) {
-        final msgs = data['messages'] as List?;
-        if (msgs != null && msgs.isNotEmpty) {
-          final lastMsg = msgs.last;
-          if (lastMsg['role'] == 'assistant') {
-            reply = lastMsg['content'];
-          }
-        }
-      }
-
-      reply ??= "Booking confirmed successfully.";
+      String? reply = _replyFrom(data) ?? "Booking confirmed successfully.";
 
       final accepted = proposal.copyWith(status: 'accepted');
       final updatedTrips = List<TripProposal>.from(state.savedTrips)..add(accepted);
@@ -400,7 +465,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
             timestamp: DateTime.now(),
           ),
         ],
-        currentProposal: null,
+        clearProposal: true,
         isProcessing: false,
         savedTrips: updatedTrips,
       );
@@ -418,6 +483,30 @@ class ChatNotifier extends StateNotifier<ChatState> {
     final threadId = state.threadId;
     if (threadId == null) return;
 
+    // Nothing is held server-side until the booking agent asks for approval,
+    // so dismissing an unconfirmed proposal is purely local.
+    if (state.currentProposal?.requiresConfirmation != true) {
+      final localId = DateTime.now().millisecondsSinceEpoch.toString();
+      state = state.copyWith(
+        messages: [
+          ...state.messages,
+          ChatMessage(
+            id: localId,
+            text: '',
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        ],
+        clearProposal: true,
+        isProcessing: false,
+      );
+      await _streamText(
+        localId,
+        'No problem — nothing was booked. Tell me what you would like to change.',
+      );
+      return;
+    }
+
     state = state.copyWith(isProcessing: true, error: null);
 
     try {
@@ -429,19 +518,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
 
       final data = response.data;
-      String? reply = data['message'];
-
-      if (reply == null || reply.isEmpty) {
-        final msgs = data['messages'] as List?;
-        if (msgs != null && msgs.isNotEmpty) {
-          final lastMsg = msgs.last;
-          if (lastMsg['role'] == 'assistant') {
-            reply = lastMsg['content'];
-          }
-        }
-      }
-
-      reply ??= "Booking declined.";
+      String? reply = _replyFrom(data) ?? "Booking declined.";
 
       final responseId = DateTime.now().millisecondsSinceEpoch.toString();
       state = state.copyWith(
@@ -454,7 +531,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
             timestamp: DateTime.now(),
           ),
         ],
-        currentProposal: null,
+        clearProposal: true,
         isProcessing: false,
       );
 
@@ -574,7 +651,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       threads: [...updatedThreads, newThread],
       threadId: newThreadId,
       messages: [],
-      currentProposal: null,
+      clearProposal: true,
     );
   }
 
@@ -646,6 +723,8 @@ class TripProposal {
   final String details;
   final String status;
   final String duration;
+  final String? bookingId;
+  final bool requiresConfirmation;
 
   TripProposal({
     required this.id,
@@ -655,6 +734,8 @@ class TripProposal {
     required this.details,
     required this.duration,
     this.status = 'pending',
+    this.bookingId,
+    this.requiresConfirmation = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -666,6 +747,8 @@ class TripProposal {
       'details': details,
       'status': status,
       'duration': duration,
+      'booking_id': bookingId,
+      'requires_confirmation': requiresConfirmation,
     };
   }
 
@@ -678,10 +761,16 @@ class TripProposal {
       details: json['details'],
       status: json['status'],
       duration: json['duration'],
+      bookingId: json['booking_id'] as String?,
+      requiresConfirmation: json['requires_confirmation'] as bool? ?? false,
     );
   }
 
-  TripProposal copyWith({String? status}) {
+  TripProposal copyWith({
+    String? status,
+    String? bookingId,
+    bool? requiresConfirmation,
+  }) {
     return TripProposal(
       id: id,
       destination: destination,
@@ -690,6 +779,9 @@ class TripProposal {
       details: details,
       status: status ?? this.status,
       duration: duration,
+      bookingId: bookingId ?? this.bookingId,
+      requiresConfirmation:
+          requiresConfirmation ?? this.requiresConfirmation,
     );
   }
 }

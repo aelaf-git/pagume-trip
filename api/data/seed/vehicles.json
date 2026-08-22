@@ -292,5 +292,31 @@
       "2026-09-13",
       "2026-09-14"
     ]
+  },
+  {
+    "id": "vehicle_danakil_4wd",
+    "destination_id": "dest_danakil",
+    "name": "Danakil expedition 4WD with driver",
+    "make": "Toyota",
+    "model": "Land Cruiser",
+    "year": 2018,
+    "seats": 6,
+    "transmission": "manual",
+    "fuel_type": "diesel",
+    "is_4wd": true,
+    "daily_price_etb": 8500,
+    "deposit_etb": 15000,
+    "insurance": "comprehensive",
+    "driver_included": true,
+    "service_type": "private_car",
+    "pickup_location": "Mekelle or Hamedela staging camp",
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ]
   }
 ]

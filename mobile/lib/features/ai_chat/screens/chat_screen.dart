@@ -13,6 +13,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
+  bool _confirmDialogOpen = false;
 
   final List<String> _agentSteps = [
     '🎯 Understanding your objective...',
@@ -29,6 +30,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chatState = ref.watch(chatProvider);
     final messages = chatState.messages;
     final proposal = chatState.currentProposal;
+
+    // When the agent asks for booking approval, open Confirm Booking.
+    ref.listen<TripProposal?>(
+      chatProvider.select((s) => s.currentProposal),
+      (previous, next) {
+        if (next != null &&
+            next.status == 'pending' &&
+            next.requiresConfirmation &&
+            (previous?.id != next.id ||
+                previous?.requiresConfirmation != true)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _showBookingConfirmationDialog();
+          });
+        }
+      },
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -105,7 +122,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     title: Text(
                       thread.title,
                       style: TextStyle(
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isActive ? FontWeight.bold : FontWeight.normal,
                         color: isActive ? AppColors.primary : Colors.black87,
                       ),
                     ),
@@ -113,7 +131,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ? IconButton(
                             icon: const Icon(Icons.delete_outline, size: 20),
                             onPressed: () {
-                              ref.read(chatProvider.notifier).deleteThread(thread.id);
+                              ref
+                                  .read(chatProvider.notifier)
+                                  .deleteThread(thread.id);
                             },
                           )
                         : null,
@@ -136,34 +156,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: messages.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: messages.length + (chatState.isProcessing ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == messages.length) {
-                  return _buildThinkingBubble();
-                }
-                final message = messages[index];
+                    padding: const EdgeInsets.all(16),
+                    itemCount:
+                        messages.length + (chatState.isProcessing ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == messages.length) {
+                        return _buildThinkingBubble();
+                      }
+                      final message = messages[index];
 
-                if (message.isActivity) {
-                  return _buildActivityWidget(message);
-                }
+                      if (message.isActivity) {
+                        return _buildActivityWidget(message);
+                      }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMessageBubble(
-                      message.text,
-                      message.isUser,
-                    ),
-                    if (!message.isUser &&
-                        proposal != null &&
-                        proposal.status == 'pending')
-                      _buildTripProposalCard(),
-                  ],
-                );
-              },
-            ),
+                      return _buildMessageBubble(
+                        message.text,
+                        message.isUser,
+                      );
+                    },
+                  ),
           ),
+          if (proposal != null && proposal.status == 'pending')
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: _buildTripProposalCard(),
+            ),
           _buildInputField(chatState.isProcessing),
         ],
       ),
@@ -176,68 +193,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.chat_bubble_outline,
-            size: 80,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Start Your Journey',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Tell me where you want to go,\nand I\'ll plan your perfect trip!',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: [
-              _buildQuickButton('Lalibela', Icons.hiking),
-              _buildQuickButton('Gondar', Icons.castle),
-              _buildQuickButton('Axum', Icons.history),
-              _buildQuickButton('Gorgora', Icons.beach_access),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickButton(
-      String destination,
-      IconData icon,
-      ) {
-    return ElevatedButton.icon(
-      onPressed: () {
-        _sendMessage('I want to visit $destination');
-      },
-      icon: Icon(icon, size: 16),
-      label: Text(destination),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary.withOpacity(0.1),
-        foregroundColor: AppColors.primary,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 10,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+      child: Image.asset(
+        'assets/images/pagume_logo.png',
+        width: 160,
+        height: 160,
+        fit: BoxFit.contain,
       ),
     );
   }
@@ -846,8 +806,11 @@ What would you like to know? 🗺️
                       BorderRadius.circular(8),
                     ),
                   ),
-                  child:
-                  const Text('Book Now ✅'),
+                  child: Text(
+                    proposal.requiresConfirmation
+                        ? 'Confirm Booking ✅'
+                        : 'Book Now ✅',
+                  ),
                 ),
               ),
             ],
@@ -856,7 +819,9 @@ What would you like to know? 🗺️
             padding:
             const EdgeInsets.only(top: 8),
             child: Text(
-              '🔒 You will be asked to confirm this booking before payment is processed.',
+              proposal.requiresConfirmation
+                  ? '🔒 Confirm to authorize this booking before it is finalized.'
+                  : '🔒 You will be asked to confirm this booking before payment is processed.',
               style: TextStyle(
                 fontSize: 11,
                 color: AppColors.grey500,
@@ -877,7 +842,8 @@ What would you like to know? 🗺️
     final proposal =
         ref.read(chatProvider).currentProposal;
 
-    if (proposal == null) return;
+    if (proposal == null || _confirmDialogOpen) return;
+    _confirmDialogOpen = true;
 
     showDialog(
       context: context,
@@ -894,12 +860,12 @@ What would you like to know? 🗺️
             ),
             const SizedBox(height: 12),
             _buildConfirmationRow(
-              'Destination',
+              'Trip',
               proposal.destination,
             ),
             _buildConfirmationRow(
-              'Duration',
-              proposal.duration,
+              'Details',
+              proposal.details,
             ),
             _buildConfirmationRow(
               'Total',
@@ -908,7 +874,7 @@ What would you like to know? 🗺️
             ),
             const SizedBox(height: 12),
             const Text(
-              'By confirming, you authorize Pagume to charge this amount.',
+              'By confirming, you authorize Pagume to complete this booking.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -920,8 +886,11 @@ What would you like to know? 🗺️
           TextButton(
             onPressed: () {
               Navigator.pop(context);
+              ref
+                  .read(chatProvider.notifier)
+                  .declineProposal();
             },
-            child: const Text('Cancel'),
+            child: const Text('Decline'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -940,7 +909,9 @@ What would you like to know? 🗺️
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      _confirmDialogOpen = false;
+    });
   }
 
   Widget _buildConfirmationRow(

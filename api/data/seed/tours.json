@@ -292,5 +292,30 @@
       "2026-09-13",
       "2026-09-14"
     ]
+  },
+  {
+    "id": "tour_danakil_erta_dallol",
+    "destination_id": "dest_danakil",
+    "agency_id": "agency_danakil",
+    "name": "Erta Ale & Dallol desert circuit",
+    "description": "Four-day Afar expedition with 4x4 support, camping, and scouts to Erta Ale and Dallol.",
+    "duration_hours": 96,
+    "duration_days": 4,
+    "price_etb": 38000,
+    "currency": "ETB",
+    "max_participants": 12,
+    "min_participants": 4,
+    "included": ["4x4", "camping", "cook", "scout", "park_fees"],
+    "excluded": ["flights_to_mekelle", "sleeping_bag"],
+    "category": "adventure",
+    "seats_remaining": 8,
+    "provider_status": "VERIFIED",
+    "available_dates": [
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+      "2026-09-13",
+      "2026-09-14"
+    ]
   }
 ]

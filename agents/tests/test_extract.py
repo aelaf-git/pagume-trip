@@ -26,6 +26,12 @@ def test_ethiopia_without_city_is_catalog_browse():
     assert ctx.wants_transport is False
 
 
+def test_open_ended_plan_trip_is_catalog_browse():
+    ctx = extract_trip_context("Plan a trip for me")
+    assert ctx.browse_destinations is True
+    assert ctx.destination_query is None
+
+
 def test_city_in_ethiopia_still_locks_destination():
     ctx = extract_trip_context("Lalibela in Ethiopia for four days")
     assert ctx.browse_destinations is False

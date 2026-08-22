@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, Callable
 
+from pagume_agents.clients.errors import InventoryUnavailableError
 from pagume_agents.clients.protocol import PagumeInventoryClient
 from pagume_agents.destination.prompt import PROMPT
 from pagume_agents.destination.tools import build_destination_tools
@@ -33,17 +34,54 @@ def make_destination_node(
         if ctx.browse_destinations:
             query = ""
         else:
-            query = params.get("query") or ctx.destination_query or ""
-        rows = [d.model_dump() for d in client.search_destinations(query=query)]
+            raw = params.get("query") or ctx.destination_query or ""
+            # LLM sometimes copies the full user sentence into query; that never matches.
+            if isinstance(raw, str) and len(raw.split()) > 5 and not ctx.destination_query:
+                query = ""
+            else:
+                query = (ctx.destination_query or raw or "").strip()
+        missed_exact = False
+        try:
+            rows = [d.model_dump() for d in client.search_destinations(query=query)]
+            # Unknown place names: offer the full catalog instead of a dead end.
+            if not rows and (query or "").strip():
+                missed_exact = True
+                rows = [d.model_dump() for d in client.search_destinations(query="")]
+        except InventoryUnavailableError as exc:
+            return {
+                "errors": [{"agent": "destination", "message": str(exc)}],
+                "agent_results": {
+                    "destination": {"status": "error", "results": []}
+                },
+                "progress": [
+                    make_progress("Inventory temporarily unavailable")
+                ],
+                "final_message": (
+                    "I couldn't reach the travel inventory service just now. "
+                    "Please make sure the Pagume API is running on port 8000, then try again."
+                ),
+                "events": [
+                    make_event(
+                        agent="destination",
+                        task="search",
+                        input={"query": query},
+                        tool_name="search_destinations",
+                        error=str(exc),
+                        duration_ms=(time.perf_counter() - started) * 1000,
+                    )
+                ],
+            }
         city_requested = bool(ctx.destination_query) and not ctx.browse_destinations
-        if rows and (city_requested or len(rows) == 1):
+        if rows and not missed_exact and (city_requested or len(rows) == 1):
             destination_id = rows[0]["id"]
             destination_name = rows[0]["name"]
         else:
-            destination_id = ctx.destination_id
-            destination_name = ctx.destination_name
+            destination_id = None if missed_exact else ctx.destination_id
+            destination_name = None if missed_exact else ctx.destination_name
         found_label = "Found destination"
-        if ctx.browse_destinations and rows:
+        if missed_exact and rows:
+            found_label = "No exact match — showing places we cover"
+        elif (ctx.browse_destinations or missed_exact) and rows:
             found_label = "Found destinations"
         elif not rows:
             found_label = "No destination found"
@@ -52,10 +90,22 @@ def make_destination_node(
                 **ctx.model_dump(),
                 "destination_id": destination_id,
                 "destination_name": destination_name,
-                "destination_query": ctx.destination_query if ctx.browse_destinations else (query or ctx.destination_query),
+                "browse_destinations": True if missed_exact else ctx.browse_destinations,
+                "destination_query": (
+                    None
+                    if missed_exact
+                    else (
+                        ctx.destination_query
+                        if ctx.browse_destinations
+                        else (query or ctx.destination_query)
+                    )
+                ),
             },
             "agent_results": {
-                "destination": {"status": "success" if rows else "empty", "results": rows}
+                "destination": {
+                    "status": "success" if rows else "empty",
+                    "results": rows,
+                }
             },
             "progress": [
                 make_progress(found_label)
@@ -64,7 +114,7 @@ def make_destination_node(
                 make_event(
                     agent="destination",
                     task="search",
-                    input={"query": query},
+                    input={"query": query, "missed_exact": missed_exact},
                     tool_name="search_destinations",
                     result_summary=summarize_inventory(rows),
                     duration_ms=(time.perf_counter() - started) * 1000,

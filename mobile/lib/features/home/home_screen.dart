@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -242,17 +243,9 @@ class HomeScreen extends StatelessWidget {
 
                     Expanded(
                       child: _serviceCard(
-                        icon: Icons.flight_takeoff_rounded,
-                        title: 'Flights',
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-                      child: _serviceCard(
                         icon: Icons.hotel_outlined,
                         title: 'Hotels',
+                        onTap: () => context.go('/booking'),
                       ),
                     ),
 
@@ -260,8 +253,19 @@ class HomeScreen extends StatelessWidget {
 
                     Expanded(
                       child: _serviceCard(
-                        icon: Icons.location_on_outlined,
-                        title: 'Places',
+                        icon: Icons.tour_outlined,
+                        title: 'Tours',
+                        onTap: () => context.go('/booking'),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: _serviceCard(
+                        icon: Icons.directions_car_outlined,
+                        title: 'Cars',
+                        onTap: () => context.go('/booking'),
                       ),
                     ),
                   ],
@@ -293,7 +297,7 @@ class HomeScreen extends StatelessWidget {
                     ),
 
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () => context.go('/booking'),
 
                       child: const Text(
                         'See all',
@@ -456,50 +460,49 @@ class HomeScreen extends StatelessWidget {
   static Widget _serviceCard({
     required IconData icon,
     required String title,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      height: 105,
-
-      decoration: BoxDecoration(
-        color: Colors.white,
-
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-
-        border: Border.all(
-          color: const Color(0xFFE5E5E5),
-        ),
-
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-
-        children: [
-
-          Icon(
-            icon,
-            color: const Color(0xFF087F3D),
-            size: 30,
-          ),
-
-          const SizedBox(height: 9),
-
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF333333),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+        child: Container(
+          height: 105,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFE5E5E5),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: const Color(0xFF087F3D),
+                size: 30,
+              ),
+              const SizedBox(height: 9),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFF333333),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

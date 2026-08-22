@@ -11,6 +11,12 @@ import 'features/splash/splash_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/signup_screen.dart';
 import 'features/booking/booking_screen.dart';
+import 'features/booking/screens/destination_detail_screen.dart';
+import 'features/booking/screens/hotel_detail_screen.dart';
+import 'features/booking/screens/tour_detail_screen.dart';
+import 'features/booking/screens/car_detail_screen.dart';
+import 'features/booking/screens/checkout_screen.dart';
+import 'features/booking/screens/confirmation_screen.dart';
 
 void main() {
   runApp(
@@ -25,9 +31,7 @@ class PagumeTripApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch for auth state changes
-    final authState = ref.watch(userProvider);
-    final isAuthenticated = authState.isAuthenticated;
+    ref.watch(userProvider);
 
     return MaterialApp.router(
       title: 'Pagume Trip',
@@ -49,7 +53,6 @@ class PagumeTripApp extends ConsumerWidget {
   }
 }
 
-// MainScreen with Bottom Navigation (Updated for StatefulShellRoute)
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key, required this.navigationShell});
   final StatefulNavigationShell navigationShell;
@@ -105,7 +108,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// GoRouter Configuration with Auth Redirect and Stateful Shell
 final GoRouter _router = GoRouter(
   initialLocation: '/',
   redirect: (context, state) {
@@ -139,14 +141,11 @@ final GoRouter _router = GoRouter(
       name: 'signup',
       builder: (context, state) => const SignupScreen(),
     ),
-
-    // StatefulShellRoute (Auto-syncs navigation)
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return MainScreen(navigationShell: navigationShell);
       },
       branches: [
-        // 1. Home Tab
         StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
@@ -156,7 +155,6 @@ final GoRouter _router = GoRouter(
             ),
           ],
         ),
-        // 2. Chat Tab
         StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
@@ -166,7 +164,6 @@ final GoRouter _router = GoRouter(
             ),
           ],
         ),
-        // 3. Trips Tab
         StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
@@ -176,17 +173,56 @@ final GoRouter _router = GoRouter(
             ),
           ],
         ),
-        // 4. Booking Tab
         StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
               path: '/booking',
               name: 'booking',
               builder: (context, state) => const BookingScreen(),
+              routes: [
+                GoRoute(
+                  path: 'destinations/:id',
+                  name: 'destinationDetail',
+                  builder: (context, state) => DestinationDetailScreen(
+                    destinationId: state.pathParameters['id']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'hotels/:id',
+                  name: 'hotelDetail',
+                  builder: (context, state) => HotelDetailScreen(
+                    hotelId: state.pathParameters['id']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'tours/:id',
+                  name: 'tourDetail',
+                  builder: (context, state) => TourDetailScreen(
+                    tourId: state.pathParameters['id']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'cars/:id',
+                  name: 'carDetail',
+                  builder: (context, state) => CarDetailScreen(
+                    vehicleId: state.pathParameters['id']!,
+                    destinationId: state.uri.queryParameters['destinationId'],
+                  ),
+                ),
+                GoRoute(
+                  path: 'checkout',
+                  name: 'checkout',
+                  builder: (context, state) => const CheckoutScreen(),
+                ),
+                GoRoute(
+                  path: 'confirmation',
+                  name: 'confirmation',
+                  builder: (context, state) => const ConfirmationScreen(),
+                ),
+              ],
             ),
           ],
         ),
-        // 5. Profile Tab
         StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(

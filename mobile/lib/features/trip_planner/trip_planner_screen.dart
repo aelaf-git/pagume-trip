@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/chat_provider.dart';
+import '../../core/providers/manual_booking_provider.dart';
+import '../../data/models/api_booking.dart';
 
 class TripPlannerScreen extends ConsumerWidget {
   const TripPlannerScreen({super.key});
@@ -12,6 +14,9 @@ class TripPlannerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final chatState = ref.watch(chatProvider);
     final savedTrips = chatState.savedTrips;
+    final manualBookings = ref.watch(manualBookingProvider).history;
+
+    final isEmpty = savedTrips.isEmpty && manualBookings.isEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -21,22 +26,42 @@ class TripPlannerScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: savedTrips.isEmpty
+      body: isEmpty
           ? _buildEmptyState(context)
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: savedTrips.length,
-        itemBuilder: (context, index) {
-          final trip = savedTrips[index];
-          return _buildTripCard(context, ref, trip);
-        },
-      ),
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (manualBookings.isNotEmpty) ...[
+                  const Text(
+                    'Manual bookings',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...manualBookings.map(
+                    (b) => _buildManualCard(context, ref, b),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (savedTrips.isNotEmpty) ...[
+                  const Text(
+                    'AI-assisted trips',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...savedTrips.map(
+                    (trip) => _buildTripCard(context, ref, trip),
+                  ),
+                ],
+              ],
+            ),
     );
   }
-
-  // ==========================================================
-  // EMPTY STATE
-  // ==========================================================
 
   Widget _buildEmptyState(BuildContext context) {
     return Center(
@@ -50,12 +75,12 @@ class TripPlannerScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Hi Traveler, no trips yet!',
+            'No trips yet',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Go to the AI Chat and book\n your first Ethiopian adventure!',
+            'Book manually from Explore & Book,\nor plan with AI Chat.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -64,11 +89,9 @@ class TripPlannerScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: () {
-              context.go('/chat');
-            },
-            icon: const Icon(Icons.chat_bubble_outline, size: 18),
-            label: const Text('Plan a Trip Now'),
+            onPressed: () => context.go('/booking'),
+            icon: const Icon(Icons.edit_note, size: 18),
+            label: const Text('Browse & Book'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -78,16 +101,102 @@ class TripPlannerScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => context.go('/chat'),
+            child: const Text('Plan with AI'),
+          ),
         ],
       ),
     );
   }
 
-  // ==========================================================
-  // TRIP CARD
-  // ==========================================================
+  Widget _buildManualCard(
+    BuildContext context,
+    WidgetRef ref,
+    ManualBookingRecord booking,
+  ) {
+    final dates = [
+      if (booking.checkIn != null) booking.checkIn!,
+      if (booking.checkOut != null) booking.checkOut!,
+    ].join(' → ');
 
-  Widget _buildTripCard(BuildContext context, WidgetRef ref, TripProposal trip) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Manual · ${booking.serviceType}',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${booking.priceEtb.toStringAsFixed(0)} ${booking.currency}',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            booking.serviceName,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          if (booking.confirmationCode != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Code: ${booking.confirmationCode}',
+              style: TextStyle(fontSize: 13, color: AppColors.grey600),
+            ),
+          ],
+          if (dates.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(dates, style: TextStyle(fontSize: 13, color: AppColors.grey600)),
+          ],
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                ref
+                    .read(manualBookingProvider.notifier)
+                    .removeFromHistory(booking.id);
+              },
+              child: const Text('Remove', style: TextStyle(color: Colors.red)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTripCard(
+      BuildContext context, WidgetRef ref, TripProposal trip) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -120,7 +229,7 @@ class TripPlannerScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  trip.duration,
+                  'AI · ${trip.duration}',
                   style: TextStyle(
                     color: AppColors.accentDark,
                     fontSize: 12,
@@ -158,7 +267,6 @@ class TripPlannerScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              // CANCEL BUTTON
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
@@ -176,7 +284,6 @@ class TripPlannerScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              // MAP BUTTON
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
@@ -207,11 +314,8 @@ class TripPlannerScreen extends ConsumerWidget {
     );
   }
 
-  // ==========================================================
-  // CANCEL DIALOG
-  // ==========================================================
-
-  void _showCancelDialog(BuildContext context, WidgetRef ref, TripProposal trip) {
+  void _showCancelDialog(
+      BuildContext context, WidgetRef ref, TripProposal trip) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

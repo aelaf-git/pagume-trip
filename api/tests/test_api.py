@@ -1,5 +1,10 @@
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok"}
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
+    # No mirror is configured in tests, so failover stays off and nothing is queued.
+    assert body["active_target"] == "primary"
+    assert body["failover_enabled"] is False
+    assert body["journal_pending"] == 0
 
 
 def test_search_gorgora(client):
