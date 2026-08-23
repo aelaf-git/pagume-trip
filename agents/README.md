@@ -25,10 +25,10 @@ cd agents
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env
+cp ../.env.example .env
 ```
 
-The default model provider is **Groq**. Copy `.env.example` to `.env` and set `GROQ_API_KEY` from [console.groq.com/keys](https://console.groq.com/keys).
+The default model provider is **Groq**. Set `GROQ_API_KEY` in `.env` from [console.groq.com/keys](https://console.groq.com/keys).
 
 ```
 LLM_BASE_URL=https://api.groq.com/openai/v1

@@ -55,20 +55,54 @@ Compose runs the API, the agents service, the portals, and a local PostGIS
 database that holds a full copy of the Neon data. The API uses Neon whenever it
 is reachable and falls back to that local copy when it is not.
 
+### Run (production-style images)
+
 ```bash
-cp .env.docker.example .env      # fill in NEON_DATABASE_URL, GROQ_API_KEY, CLOUDINARY_URL
+cp .env.example .env      # fill in DATABASE_URL / GROQ_API_KEY / CLOUDINARY_URL
 docker compose up -d --build
+# if npm inside Docker times out:
+#   cd portals && npm run build && PORTALS_DOCKER_TARGET=prebuilt docker compose up -d --build portals
+docker compose --profile sync run --rm mirror
 ```
 
 | Service | URL | Notes |
 |---|---|---|
-| portals | http://localhost:8080 | nginx serving the Vite build |
+| portals | http://localhost:8080 | nginx (or Vite when using watch) |
 | api | http://localhost:8000 | `/health` reports the active database |
 | agents | http://localhost:8100 | reaches the API at `http://api:8000` |
-| db | localhost:5433 | the local mirror (`DB_HOST_PORT`) |
+| db | localhost:5434 | local mirror (`DB_HOST_PORT`; default in example is 5433) |
 
-`VITE_API_BASE_URL` is baked into the portals bundle at build time, so changing
-it requires `docker compose build portals`.
+### Run with watch (live reload)
+
+Starts the stack and syncs host file changes into the containers. API/agents
+use uvicorn `--reload`; portals runs the Vite dev server with HMR.
+
+```bash
+# Stop a previous detached stack if it is already up
+docker compose down
+
+docker compose -f docker-compose.yml -f docker-compose.watch.yml watch
+```
+
+You should see Compose print watch events when you edit files, for example:
+
+```text
+Watch enabled
+Syncing service "api" after 1 changes were detected
+```
+
+Edit `api/src/...` or `agents/src/...` and the service reloads; edit
+`portals/src/...` and Vite hot-reloads in the browser.
+
+`VITE_API_BASE_URL` is baked into the portals production bundle at build time, so
+changing it requires rebuilding portals. The default Compose target builds Vite
+inside Docker (`runtime`). If npm inside Docker times out, build on the host and
+switch targets:
+
+```bash
+cd portals && VITE_API_BASE_URL=http://localhost:8000/api/v1 npm ci && npm run build
+PORTALS_DOCKER_TARGET=prebuilt docker compose up -d --build portals
+```
 
 Schema migrations are never run automatically:
 
@@ -77,7 +111,11 @@ docker compose run --rm api alembic upgrade head
 ```
 
 The Flutter app is not containerized. Point it at these ports from
-`mobile/lib/core/api/api_config.dart`.
+`mobile/lib/core/api/api_config.dart`, then:
+
+```bash
+cd mobile && flutter run
+```
 
 ### Mirroring Neon locally
 

@@ -185,37 +185,39 @@ def push_pending(limit: int | None = None) -> SyncResult:
 
         columns_cache: dict[str, list[str]] = {}
 
-        with primary.connect() as pconn:
-            for entry in entries:
-                table = entry["table_name"]
-                if table in EXCLUDED_TABLES:
-                    _mark(local, entry["id"], error="skipped: excluded table")
-                    result.skipped += 1
-                    continue
+        for entry in entries:
+            table = entry["table_name"]
+            if table in EXCLUDED_TABLES:
+                _mark(local, entry["id"], error="skipped: excluded table")
+                result.skipped += 1
+                continue
 
-                if table not in columns_cache:
-                    columns_cache[table] = _primary_columns(pconn, table)
-                columns = columns_cache[table]
-                if not columns:
-                    _mark(local, entry["id"], error="skipped: table missing on primary")
-                    result.skipped += 1
-                    continue
+            if table not in columns_cache:
+                with primary.connect() as probe:
+                    columns_cache[table] = _primary_columns(probe, table)
+            columns = columns_cache[table]
+            if not columns:
+                _mark(local, entry["id"], error="skipped: table missing on primary")
+                result.skipped += 1
+                continue
 
-                pk = entry["pk"] or {}
-                row = entry["row_data"]
-                try:
-                    with pconn.begin():
-                        _apply(pconn, table, entry["op"], pk, row, columns)
-                except Exception as exc:  # noqa: BLE001
-                    message = f"journal #{entry['id']} {entry['op']} {table}: {exc}"
-                    logger.error("Write-back failed, stopping: %s", message)
-                    _mark(local, entry["id"], error=str(exc), pushed=False)
-                    result.failed += 1
-                    result.errors.append(message)
-                    break
+            pk = entry["pk"] or {}
+            row = entry["row_data"]
+            try:
+                # One transaction per journal entry so a failure leaves later
+                # rows unpushed and replay can resume cleanly.
+                with primary.begin() as pconn:
+                    _apply(pconn, table, entry["op"], pk, row, columns)
+            except Exception as exc:  # noqa: BLE001
+                message = f"journal #{entry['id']} {entry['op']} {table}: {exc}"
+                logger.error("Write-back failed, stopping: %s", message)
+                _mark(local, entry["id"], error=str(exc), pushed=False)
+                result.failed += 1
+                result.errors.append(message)
+                break
 
-                _mark(local, entry["id"])
-                result.pushed += 1
+            _mark(local, entry["id"])
+            result.pushed += 1
     finally:
         local.dispose()
         primary.dispose()
