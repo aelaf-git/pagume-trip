@@ -1,16 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../api/api_client.dart';
+import '../api/auth_api.dart';
 import '../storage/secure_storage.dart';
 
 class User {
   final String id;
   final String name;
   final String email;
+  final String role;
   final bool isVerified;
 
   User({
     required this.id,
     required this.name,
     required this.email,
+    this.role = 'TRAVELER',
     this.isVerified = false,
   });
 
@@ -18,12 +23,14 @@ class User {
     String? id,
     String? name,
     String? email,
+    String? role,
     bool? isVerified,
   }) {
     return User(
       id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
+      role: role ?? this.role,
       isVerified: isVerified ?? this.isVerified,
     );
   }
@@ -47,12 +54,13 @@ class UserState {
     bool? isLoading,
     bool? isAuthenticated,
     String? error,
+    bool clearError = false,
   }) {
     return UserState(
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
-      error: error ?? this.error,
+      error: clearError ? null : (error ?? this.error),
     );
   }
 }
@@ -62,27 +70,63 @@ final userProvider = StateNotifierProvider<UserNotifier, UserState>((ref) {
 });
 
 class UserNotifier extends StateNotifier<UserState> {
-  UserNotifier() : super(UserState()) {
+  UserNotifier({AuthApi? authApi})
+      : _authApi = authApi ?? AuthApi(),
+        super(UserState(isLoading: true)) {
     _checkAuthStatus();
   }
 
+  final AuthApi _authApi;
+
   Future<void> _checkAuthStatus() async {
     final isAuthenticated = await SecureStorage.isAuthenticated();
-    if (isAuthenticated) {
-      final userData = await SecureStorage.getUserData();
-      final user = User(
-        id: userData['userId'] ?? '',
-        name: userData['name'] ?? 'Traveler',
-        email: userData['email'] ?? '',
-        isVerified: userData['isVerified'] ?? false,
+    if (!isAuthenticated) {
+      state = state.copyWith(isLoading: false, isAuthenticated: false);
+      return;
+    }
+
+    final token = await SecureStorage.getToken();
+    if (token == null || token.isEmpty) {
+      state = state.copyWith(isLoading: false, isAuthenticated: false);
+      return;
+    }
+
+    ApiClient.instance.setAuthToken(token);
+
+    // Prefer a live profile so revoked/inactive accounts lose the session.
+    try {
+      final me = await _authApi.me(token);
+      await SecureStorage.saveUserData(
+        token: token,
+        userId: me.id,
+        name: me.fullName,
+        email: me.email,
+        isVerified: me.isVerified,
       );
       state = state.copyWith(
-        user: user,
+        user: User(
+          id: me.id,
+          name: me.fullName,
+          email: me.email,
+          role: me.role,
+          isVerified: me.isVerified,
+        ),
+        isAuthenticated: true,
+        isLoading: false,
+        clearError: true,
+      );
+    } catch (_) {
+      final userData = await SecureStorage.getUserData();
+      state = state.copyWith(
+        user: User(
+          id: userData['userId'] ?? '',
+          name: userData['name'] ?? 'Traveler',
+          email: userData['email'] ?? '',
+          isVerified: userData['isVerified'] ?? false,
+        ),
         isAuthenticated: true,
         isLoading: false,
       );
-    } else {
-      state = state.copyWith(isLoading: false);
     }
   }
 
@@ -91,9 +135,10 @@ class UserNotifier extends StateNotifier<UserState> {
     required String userId,
     required String name,
     required String email,
+    String role = 'TRAVELER',
     bool isVerified = false,
   }) async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, clearError: true);
 
     try {
       await SecureStorage.saveUserData(
@@ -103,25 +148,79 @@ class UserNotifier extends StateNotifier<UserState> {
         email: email,
         isVerified: isVerified,
       );
-
-      final user = User(
-        id: userId,
-        name: name,
-        email: email,
-        isVerified: isVerified,
-      );
+      ApiClient.instance.setAuthToken(token);
 
       state = state.copyWith(
-        user: user,
+        user: User(
+          id: userId,
+          name: name,
+          email: email,
+          role: role,
+          isVerified: isVerified,
+        ),
         isAuthenticated: true,
         isLoading: false,
-        error: null,
+        clearError: true,
       );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
         error: 'Login failed: $e',
       );
+      rethrow;
+    }
+  }
+
+  Future<void> loginWithPassword({
+    required String email,
+    required String password,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final session = await _authApi.login(email: email, password: password);
+      await login(
+        token: session.token,
+        userId: session.user.id,
+        name: session.user.fullName,
+        email: session.user.email,
+        role: session.user.role,
+        isVerified: session.user.isVerified,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required String fullName,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final session = await _authApi.registerAndLogin(
+        email: email,
+        password: password,
+        fullName: fullName,
+      );
+      await login(
+        token: session.token,
+        userId: session.user.id,
+        name: session.user.fullName,
+        email: session.user.email,
+        role: session.user.role,
+        isVerified: session.user.isVerified,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
     }
   }
 
@@ -130,11 +229,12 @@ class UserNotifier extends StateNotifier<UserState> {
 
     try {
       await SecureStorage.clearAll();
+      ApiClient.instance.setAuthToken(null);
       state = state.copyWith(
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: null,
+        clearError: true,
       );
     } catch (e) {
       state = state.copyWith(
@@ -155,7 +255,7 @@ class UserNotifier extends StateNotifier<UserState> {
       state = state.copyWith(
         user: updatedUser,
         isLoading: false,
-        error: null,
+        clearError: true,
       );
     } catch (e) {
       state = state.copyWith(
@@ -174,6 +274,6 @@ class UserNotifier extends StateNotifier<UserState> {
   }
 
   void clearError() {
-    state = state.copyWith(error: null);
+    state = state.copyWith(clearError: true);
   }
 }
