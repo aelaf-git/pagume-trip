@@ -46,7 +46,7 @@ class ApiClient {
       if (parser != null) return parser(response.data);
       return response.data as T;
     } on DioException catch (e) {
-      throw _mapError(e);
+      throw mapError(e);
     }
   }
 
@@ -67,11 +67,19 @@ class ApiClient {
       if (parser != null) return parser(response.data);
       return response.data as T;
     } on DioException catch (e) {
-      throw _mapError(e);
+      throw mapError(e);
     }
   }
 
-  ApiException _mapError(DioException e) {
+  void setAuthToken(String? token) {
+    if (token == null || token.isEmpty) {
+      _dio.options.headers.remove('Authorization');
+    } else {
+      _dio.options.headers['Authorization'] = 'Bearer $token';
+    }
+  }
+
+  ApiException mapError(DioException e) {
     final status = e.response?.statusCode;
     final data = e.response?.data;
     String message = e.message ?? 'Network error';
@@ -80,12 +88,21 @@ class ApiClient {
       final detail = data['detail'];
       if (detail is String) {
         message = detail;
+      } else if (detail is List && detail.isNotEmpty) {
+        final first = detail.first;
+        if (first is Map && first['msg'] != null) {
+          message = first['msg'].toString();
+        } else {
+          message = detail.toString();
+        }
       } else if (detail != null) {
         message = detail.toString();
       }
     }
 
-    if (status == 409) {
+    if (status == 400 && message.toLowerCase().contains('incorrect')) {
+      message = 'Incorrect email or password';
+    } else if (status == 409) {
       message = message.isNotEmpty
           ? message
           : 'Those dates are no longer available. Please pick different dates.';

@@ -117,6 +117,33 @@ def _seed_portal_samples(session: Session) -> None:
         )
         session.flush()
 
+    # Mobile app demo travelers (bcrypt via get_password_hash).
+    _TRAVELERS = [
+        {
+            "email": "traveler@pagume.et",
+            "password": "Travel123!",
+            "full_name": "Demo Traveler",
+        },
+        {
+            "email": "abebe@pagume.et",
+            "password": "Travel123!",
+            "full_name": "Abebe Kebede",
+        },
+    ]
+    for entry in _TRAVELERS:
+        if session.query(User).filter(User.email == entry["email"]).first() is None:
+            session.add(
+                User(
+                    email=entry["email"],
+                    hashed_password=get_password_hash(entry["password"]),
+                    full_name=entry["full_name"],
+                    role=UserRole.TRAVELER,
+                    is_active=True,
+                    is_verified=True,
+                )
+            )
+    session.flush()
+
     hotel_user = session.query(User).filter(User.email == "hotel@seed.et").first()
     if hotel_user is None:
         hotel_user = User(
