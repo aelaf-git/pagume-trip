@@ -35,9 +35,8 @@ cd api
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env
-# edit DATABASE_URL if your local Postgres user/password differ
-# set CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME for hotel image uploads
+cp ../.env.example .env
+# keep DATABASE_URL / CLOUDINARY_URL; remove Docker-only keys if you prefer
 pagume-api
 ```
 

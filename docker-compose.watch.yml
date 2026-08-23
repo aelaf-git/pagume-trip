@@ -1,0 +1,101 @@
+# Live-reload overlay for local development.
+# Usage (foreground, with watch logs):
+#   docker compose -f docker-compose.yml -f docker-compose.watch.yml watch
+#
+# Or start detached then attach watch:
+#   docker compose -f docker-compose.yml -f docker-compose.watch.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.watch.yml watch
+
+services:
+  api:
+    command:
+      [
+        "uvicorn",
+        "pagume_api.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+        "--reload-dir",
+        "/app/src",
+      ]
+    develop:
+      watch:
+        - action: sync
+          path: ./api/src
+          target: /app/src
+          ignore:
+            - "**/__pycache__/**"
+            - "**/*.pyc"
+            - "**/.pytest_cache/**"
+        - action: sync
+          path: ./api/data
+          target: /app/data
+        - action: rebuild
+          path: ./api/pyproject.toml
+        - action: rebuild
+          path: ./api/Dockerfile
+
+  agents:
+    command:
+      [
+        "uvicorn",
+        "pagume_agents.api.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8100",
+        "--reload",
+        "--reload-dir",
+        "/app/src",
+      ]
+    develop:
+      watch:
+        - action: sync
+          path: ./agents/src
+          target: /app/src
+          ignore:
+            - "**/__pycache__/**"
+            - "**/*.pyc"
+            - "**/.pytest_cache/**"
+        - action: rebuild
+          path: ./agents/pyproject.toml
+        - action: rebuild
+          path: ./agents/Dockerfile
+
+  # Vite dev server (HMR) instead of the static nginx image.
+  portals:
+    build:
+      context: ./portals
+      target: build
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    command:
+      [
+        "npm",
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080",
+      ]
+    develop:
+      watch:
+        - action: sync
+          path: ./portals/src
+          target: /app/src
+        - action: sync
+          path: ./portals/index.html
+          target: /app/index.html
+        - action: sync
+          path: ./portals/public
+          target: /app/public
+        - action: rebuild
+          path: ./portals/package.json
+        - action: rebuild
+          path: ./portals/package-lock.json
+        - action: rebuild
+          path: ./portals/vite.config.js

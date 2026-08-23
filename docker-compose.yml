@@ -27,7 +27,8 @@ services:
     restart: unless-stopped
     environment:
       # Primary target. Falls back to the local mirror when unreachable.
-      DATABASE_URL: ${NEON_DATABASE_URL:-}
+      # Prefer NEON_DATABASE_URL; DATABASE_URL works too (same value in .env).
+      DATABASE_URL: ${NEON_DATABASE_URL:-${DATABASE_URL:-}}
       LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL:-postgresql+psycopg://pagume:pagume@db:5432/pagume}
       DB_FAILOVER_ENABLED: ${DB_FAILOVER_ENABLED:-true}
       DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT:-3}
@@ -82,7 +83,7 @@ services:
     image: postgis/postgis:18-3.6
     profiles: ["sync"]
     environment:
-      NEON_DATABASE_URL: ${NEON_DATABASE_URL:-}
+      NEON_DATABASE_URL: ${NEON_DATABASE_URL:-${DATABASE_URL:-}}
       LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL:-postgresql+psycopg://pagume:pagume@db:5432/pagume}
     volumes:
       - ./ops/mirror:/ops:ro
