@@ -67,9 +67,21 @@ async def _probe_loop() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     router = get_router()
+    settings = get_settings()
     if router.failover_enabled:
-        # Pick the right target before the first request instead of failing it.
-        await asyncio.to_thread(router.refresh)
+        # Cap the first probe so a hung DNS/SSL path cannot block readiness.
+        probe_budget = max(settings.db_connect_timeout * 3, 10)
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(router.refresh),
+                timeout=probe_budget,
+            )
+        except TimeoutError:
+            router.report_failure(PRIMARY)
+            logger.warning(
+                "Primary probe timed out after %ss — serving from the local mirror",
+                probe_budget,
+            )
 
     try:
         await asyncio.to_thread(_prepare_schema_and_seed)

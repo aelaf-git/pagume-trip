@@ -24,7 +24,9 @@ USER pagume
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+# Neon probe + seed can take well over a minute when the primary is unreachable;
+# keep start_period above that so depends_on: service_healthy does not fail early.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=120s --retries=6 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
 
 CMD ["pagume-api"]

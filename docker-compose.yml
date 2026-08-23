@@ -40,6 +40,19 @@ services:
       PORT: 8000
     ports:
       - "${API_HOST_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      # Cold start often probes Neon then seeds the mirror; allow time before unhealthy.
+      start_period: 120s
+      retries: 6
     depends_on:
       db:
         condition: service_healthy
